@@ -1,0 +1,14 @@
+{
+  "dependencies": [
+    {
+      "name": "opencv4",
+      "default-features": false,
+      "features": ["fs", "eigen", "highgui", "jpeg", "png"],
+      "version>=": "4.10.0#5"
+    },
+    {
+      "name": "tbb",
+      "version>=": "2022.3.0#0"
+    }
+  ]
+}

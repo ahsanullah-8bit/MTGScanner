@@ -31,10 +31,9 @@ T.TabButton {
         icon: control.icon
         text: control.text
         font: control.font
-        color: control.expanded &&
-                (!control.enabled ? MTGScanner.disabledTextColor :
+        color: !control.enabled ? MTGScanner.disabledTextColor :
                  control.down || control.checked ? MTGScanner.accentColor :
-                 MTGScanner.placeholderTextColor)
+                 MTGScanner.placeholderTextColor
         
         expanded: control.expanded
         display: IconLabel.TextBesideIcon

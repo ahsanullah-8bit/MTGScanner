@@ -44,4 +44,18 @@ QHash<int, QByteArray> CameraModel::roleNames() const
     return roles;
 }
 
+void CameraModel::cameraAdded(const QCameraDevice &cameraDevice)
+{
+    beginResetModel();
+    // ...
+    endResetModel();
+}
+
+void CameraModel::cameraRemoved(const QCameraDevice &cameraDevice)
+{
+    beginResetModel();
+    // ...
+    endResetModel();
+}
+
 } // namespace MTGS

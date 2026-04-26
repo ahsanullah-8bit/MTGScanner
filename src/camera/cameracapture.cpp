@@ -32,6 +32,7 @@ void CameraCapture::init()
 
         FramePtr f(new Frame{});
         f->mat = mat.clone();
+        f->sequenceId = m_frameSequenceCount++;
         f->cameraId = m_cameraDevice.id();
         f->timestamp = QTime::currentTime();
 

@@ -24,16 +24,18 @@ public:
 
 public slots:
     void init();
+    void registerCamera(const QCameraDevice &cameraDevice, QVideoSink *videoSink = nullptr, int maxInFlight = 16);
     
 signals:
     void engineLoaded(bool loaded = true);
+    void cameraRegistered(const QCameraDevice &cameraDevice);
     void sendFrameToMainThread(const FramePtr& frame);
 
 private:
     tf::graph m_graph;
     QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<FramePtr, tf::continue_msg>>> m_processor;
     QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<tf::continue_msg>>> m_frameDistributor;
-    QSharedPointer<tf::function_node<FramePtr>> m_outputNotifier;
+    QSharedPointer<tf::function_node<FramePtr>> m_uiNotifier;
 
     tbb::concurrent_unordered_map<QString, CameraInfo> &m_cameras;
 };
@@ -50,17 +52,22 @@ public:
 
 public slots:
     void receiveFrameNotification(const FramePtr& frame);
+    Q_INVOKABLE void registerCamera(const QCameraDevice &cameraDevice, QVideoSink *videoSink = nullptr, int maxInFlight = 16);
     Q_INVOKABLE void registerCameraOutSink(const QString &cameraId, QVideoSink *videoSink);
 
 signals:
     void engineLoaded(bool loaded = true);
+    void cameraRegistered(const QCameraDevice &cameraDevice);
 
 private:
     void setEngineLoaded(bool loaded);
 
 private:
     bool m_engineLoaded = false;
-    QPair<QThread*, EngineWorker*> m_workerThread;
+    struct {
+        EngineWorker *worker;
+        QThread *thread;
+    } m_engine;
     tbb::concurrent_unordered_map<QString, CameraInfo> m_cameras;
 };
 

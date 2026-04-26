@@ -27,100 +27,86 @@ EngineWorker::~EngineWorker()
 }
 
 void EngineWorker::init() 
-{    
-    auto cameras = QMediaDevices::videoInputs();
+{
+    auto processor_body = [this](const FramePtr &frame, auto &ports) {
+        // Process the image. For now, we just pass it through.
 
-    // Initialize camera info, workers and their nodes.
-    for (const auto &camera : cameras) {
-        qCDebug(worker_logger) << QString("Initializing camera %1").arg(camera.id());
+        if (frame->timestamp.msecsTo(QTime::currentTime()) > 100) {
+            qCWarning(worker_logger) << QString("Cam %1 frame at %2 expired")
+                .arg(m_cameras.at(frame->cameraId).cameraDevice.description())
+                .arg(frame->originalFrame.startTime());
 
-        CameraInfo info;
-        auto async_src_body = [] (const tf::continue_msg &, tf::async_node<tf::continue_msg, FramePtr>::gateway_type& gateway) {};
-        info.asyncSrc = QSharedPointer<tf::async_node<tf::continue_msg, FramePtr>>::create(m_graph, tf::unlimited, async_src_body);
-        info.sequencer = QSharedPointer<tf::sequencer_node<FramePtr>>::create(m_graph, [](const FramePtr &f) {
-            return f->sequenceId;
-        });
-        info.limiter = QSharedPointer<tf::limiter_node<FramePtr>>::create(m_graph, 30);
-        tf::make_edge(*info.asyncSrc, *info.limiter);
-        // This is initialized in the main thread (Engine).
-        info.outVideoSink = nullptr;
-        info.cameraDevice = camera;
-
-        auto thread = new QThread();
-        auto worker = new CameraCapture(camera, info.asyncSrc->gateway());
-        worker->moveToThread(thread);
-        connect(thread, &QThread::started, worker, &CameraCapture::init);
-        connect(thread, &QThread::finished, worker, &QObject::deleteLater);
-        connect(thread, &QThread::finished, thread, &QObject::deleteLater);
-
-        info.capture = {thread, worker};
-        m_cameras.emplace(camera.id(), info);
-    }
-
-    // The critical processor node.
-    m_processor = QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<FramePtr, tf::continue_msg>>>::create(m_graph, tf::unlimited, 
-        [this](const FramePtr &frame, auto &ports) {
-            if (frame->timestamp.msecsTo(QTime::currentTime()) > 100) {
-                qCWarning(worker_logger) << QString("Cam %1 frame at %2 expired")
-                    .arg(m_cameras.at(frame->cameraId).cameraDevice.description())
-                    .arg(frame->originalFrame.startTime());
-
-                    std::get<1>(ports).try_put(tf::continue_msg());
-                    return;
-            }
-
-            // Process the image. For now, we just pass it through.
-
-            std::get<0>(ports).try_put(frame);
-            std::get<1>(ports).try_put(tf::continue_msg());
-        }
-    );
-
-    m_frameDistributor = QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<tf::continue_msg>>>::create(m_graph, tf::unlimited, 
-        [this](const FramePtr &frame, auto &ports) {
-            if (frame->timestamp.msecsTo(QTime::currentTime()) > 100) {
-                qCWarning(worker_logger) << QString("Cam %1 frame at %2 expired at distributor")
-                    .arg(m_cameras.at(frame->cameraId).cameraDevice.description())
-                    .arg(frame->originalFrame.startTime());
-
-                    std::get<0>(ports).try_put(tf::continue_msg());
-                    return;
-            }
-
-            if (!m_cameras.contains(frame->cameraId)) {
-                std::get<0>(ports).try_put(tf::continue_msg());
+                m_cameras.at(frame->cameraId).skippedFramesCount++;
+                std::get<1>(ports).try_put(tf::continue_msg());
                 return;
-            }
-
-            // Assigning and increasing the sequence count
-            frame->sequenceId = m_cameras.at(frame->cameraId).sequenceCount++;
-
-            m_cameras.at(frame->cameraId).sequencer->try_put(frame);
-            std::get<0>(ports).try_put(tf::continue_msg());
         }
-    );
 
-    // Final frame notifier.
-    auto output_notifier_body = [this](const FramePtr &f) {
+        std::get<0>(ports).try_put(frame);
+        std::get<1>(ports).try_put(tf::continue_msg());
+    };
+
+    auto frame_distributor_body = [this](const FramePtr &frame, auto &ports) {
+        if (!m_cameras.contains(frame->cameraId)) {
+            std::get<0>(ports).try_put(tf::continue_msg());
+            return;
+        }
+
+        // TODO: Maybe check for frame expiration here as well.
+
+        m_cameras.at(frame->cameraId).postSequencer->try_put(frame);
+        std::get<0>(ports).try_put(tf::continue_msg());
+    };
+
+    auto ui_notifier_body = [this](const FramePtr &f) {
         f->originalFrame = QVideoFrame(QImage(f->mat.data, f->mat.cols, f->mat.rows, f->mat.step, QImage::Format_BGR888).copy());
         
         QMetaObject::invokeMethod(this, "sendFrameToMainThread", Qt::AutoConnection, Q_ARG(FramePtr, f));
     };
-    m_outputNotifier = QSharedPointer<tf::function_node<FramePtr>>::create(m_graph, tf::serial, output_notifier_body);
 
-    // Connect camera nodes to processor.
-    for (const auto &[_, cam] : m_cameras) {
-        tf::make_edge(*cam.limiter, *m_processor);
-        tf::make_edge(tf::output_port<1>(*m_processor), cam.limiter->decrementer());
-        tf::make_edge(*cam.sequencer, *m_outputNotifier);
-    }
-    
-    // Now that everything is set up, start the camera threads.
-    for (const auto &[_, cam] : m_cameras) {
-        cam.capture.thread->start();
-    }
+    // The critical processor node.
+    m_processor = QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<FramePtr, tf::continue_msg>>>::create(m_graph, tf::unlimited, processor_body);
+    m_frameDistributor = QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<tf::continue_msg>>>::create(m_graph, tf::unlimited, frame_distributor_body);
+    m_uiNotifier = QSharedPointer<tf::function_node<FramePtr>>::create(m_graph, tf::serial, ui_notifier_body);
+
+    tf::make_edge(*m_processor, *m_frameDistributor);
 
     emit engineLoaded();
+}
+
+void EngineWorker::registerCamera(const QCameraDevice &cameraDevice, QVideoSink *videoSink, int maxInFlight)
+{
+    if (cameraDevice.isNull()) {
+        qCCritical(worker_logger) << "Cannot register null camera device";
+        return;
+    }
+
+    auto async_src_body = [] (const tf::continue_msg &, tf::async_node<tf::continue_msg, FramePtr>::gateway_type& gateway) {};
+    auto sequencer_body = [] (const FramePtr &f) { return f->sequenceId; };
+
+    CameraInfo cam;
+    cam.asyncSrc = QSharedPointer<tf::async_node<tf::continue_msg, FramePtr>>::create(m_graph, tf::unlimited, async_src_body);
+    cam.preLimiter = QSharedPointer<tf::limiter_node<FramePtr>>::create(m_graph, maxInFlight);
+    cam.postSequencer = QSharedPointer<tf::sequencer_node<FramePtr>>::create(m_graph, sequencer_body);
+    cam.outVideoSink = videoSink;
+    cam.cameraDevice = cameraDevice;
+
+    tf::make_edge(*cam.asyncSrc, *cam.preLimiter);
+    tf::make_edge(*cam.preLimiter, *m_processor);
+    tf::make_edge(tf::output_port<1>(*m_processor), cam.preLimiter->decrementer());
+    tf::make_edge(*cam.postSequencer, *m_uiNotifier);
+
+    auto thread = new QThread();
+    auto worker = new CameraCapture(cameraDevice, cam.asyncSrc->gateway());
+    worker->moveToThread(thread);
+    connect(thread, &QThread::started, worker, &CameraCapture::init);
+    connect(thread, &QThread::finished, worker, &QObject::deleteLater);
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    
+    cam.capture = { thread, worker };
+    cam.capture.thread->start();
+
+    m_cameras.emplace(cameraDevice.id(), cam);
+    emit cameraRegistered(cameraDevice);
 }
 
 // ------------------ Engine Implementation ------------------
@@ -136,15 +122,17 @@ Engine::Engine()
 
     connect(worker, &EngineWorker::engineLoaded, this, &Engine::setEngineLoaded);
     connect(worker, &EngineWorker::sendFrameToMainThread, this, &Engine::receiveFrameNotification);
+    connect(worker, &EngineWorker::cameraRegistered, this, &Engine::cameraRegistered);
 
-    m_workerThread = qMakePair(thread, worker);
+    m_engine.worker = worker;
+    m_engine.thread = thread;
     thread->start();
 }
 
 Engine::~Engine() 
 {
-    m_workerThread.first->quit();
-    m_workerThread.first->wait();
+    m_engine.thread->quit();
+    m_engine.thread->wait();
 }
 
 CameraModel Engine::createCameraModel() 
@@ -155,6 +143,8 @@ CameraModel Engine::createCameraModel()
 QSharedPointer<CameraModel> Engine::createSharedCameraModel() 
 {
     QSharedPointer<CameraModel> model = QSharedPointer<CameraModel>::create(m_cameras, this);
+    connect(m_engine.worker, &EngineWorker::cameraRegistered, model.data(), &CameraModel::cameraAdded);
+
     return model;
 }
 
@@ -183,6 +173,16 @@ void Engine::registerCameraOutSink(const QString &cameraId, QVideoSink *videoSin
     }
 
     m_cameras[cameraId].outVideoSink = videoSink;
+}
+
+void Engine::registerCamera(const QCameraDevice &cameraDevice, QVideoSink *videoSink, int maxInFlight)
+{
+    if (m_engine.thread && m_engine.worker) {
+        QMetaObject::invokeMethod(m_engine.worker, "registerCamera", Qt::AutoConnection,
+            Q_ARG(QCameraDevice, cameraDevice), Q_ARG(QVideoSink*, videoSink), Q_ARG(int, maxInFlight));
+    } else {
+        qCCritical(engine_logger) << "Worker thread not initialized yet. Cannot register camera" << cameraDevice.description();
+    }
 }
 
 void Engine::setEngineLoaded(bool loaded) 

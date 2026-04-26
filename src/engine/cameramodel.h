@@ -2,6 +2,7 @@
 
 #include <tbb_patched.hpp>
 
+#include <QCameraDevice>
 #include <QAbstractListModel>
 
 #include <engine/camerainfo.hpp>
@@ -24,6 +25,10 @@ public:
     QVariant data(const QModelIndex &index, int role) const override;
     // bool setData(const QModelIndex &index, const QVariant &value, int role) override;
     QHash<int, QByteArray> roleNames() const override;
+
+public slots:
+    void cameraAdded(const QCameraDevice &cameraDevice);
+    void cameraRemoved(const QCameraDevice &cameraDevice);
 
 private:
     tbb::concurrent_unordered_map<QString, CameraInfo> &m_cameras;

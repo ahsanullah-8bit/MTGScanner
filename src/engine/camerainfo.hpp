@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <tbb_patched.hpp>
 
 #include <QPair>
@@ -20,9 +21,9 @@ struct CameraInfo {
     QCameraDevice cameraDevice;
     QVideoSink* outVideoSink;
     QSharedPointer<tf::async_node<tf::continue_msg, FramePtr>> asyncSrc;
-    QSharedPointer<tf::limiter_node<FramePtr>> limiter;
-    QAtomicInteger<size_t> sequenceCount = 0;
-    QSharedPointer<tf::sequencer_node<FramePtr>> sequencer;
+    QSharedPointer<tf::limiter_node<FramePtr>> preLimiter;
+    QSharedPointer<tf::sequencer_node<FramePtr>> postSequencer;
+    size_t skippedFramesCount = 0;
 };
 
 } // namespace MTGS

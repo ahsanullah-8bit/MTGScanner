@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <tbb_patched.hpp>
 
 #include <QObject>
@@ -32,6 +33,7 @@ private:
     QCameraDevice m_cameraDevice;
     QMediaCaptureSession *m_captureSession;
 
+    size_t m_frameSequenceCount = 0;
     tbb::flow::async_node<tbb::flow::continue_msg, FramePtr>::gateway_type &m_gateway;
 };
 

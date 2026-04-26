@@ -16,6 +16,7 @@ Item {
     property real leftPadding: 0
     property real rightPadding: 0
     property real bottomPadding: 0
+    property int animationDuration: 200
 
     enum Display {
         IconOnly,
@@ -68,10 +69,10 @@ Item {
             opacity: control.expanded ? 1 : 0
 
             Behavior on width {
-                NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: control.animationDuration; easing.type: Easing.OutCubic }
             }
             Behavior on opacity {
-                NumberAnimation { duration: 200 }
+                NumberAnimation { duration: control.animationDuration }
             }
         }
         onLoaded: internal.layout()

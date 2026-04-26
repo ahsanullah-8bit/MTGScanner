@@ -7,6 +7,7 @@ T.TabButton {
     id: control
 
     property bool expanded: false
+    property int animationDuration: 200
     implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset,
                             implicitContentWidth + leftPadding + rightPadding)
     implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset,
@@ -36,8 +37,9 @@ T.TabButton {
                  MTGScanner.placeholderTextColor
         
         expanded: control.expanded
+        animationDuration: control.animationDuration
         display: IconLabel.TextBesideIcon
-        alignment: expanded ? Qt.AlignLeft : Qt.AlignHCenter
+        alignment: Qt.AlignLeft
     }
 
     background: Rectangle {

@@ -7,12 +7,14 @@ import MTGScanner.Controls
 Control {
     id: root
 
+    property int currentIndex: 0
     property bool expanded: false
     readonly property int collapsedWidth: 60
     readonly property int expandedWidth: 220
+    readonly property int animationDuration: 200
 
     implicitWidth: expanded ? expandedWidth : collapsedWidth
-    Behavior on implicitWidth { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+    Behavior on implicitWidth { NumberAnimation { duration: animationDuration; easing.type: Easing.OutCubic } }
 
     Layout.fillHeight: true
 
@@ -71,6 +73,8 @@ Control {
                 ]
 
                 delegate: TabButton {
+                    readonly property int itemIndex: index
+
                     icon.source: modelData.icon
                     icon.width: 24
                     icon.height: 24
@@ -78,12 +82,15 @@ Control {
                     font.pixelSize: 12
                     font.weight: Font.DemiBold
                     expanded: root.expanded
+                    checked: itemIndex === root.currentIndex
 
                     spacing: 14
-                    leftPadding: 12
-                    rightPadding: 12
+                    leftPadding: 10
+                    rightPadding: 10
                     Layout.preferredHeight: 40
                     Layout.fillWidth: true
+
+                    onClicked: root.currentIndex = itemIndex
                 }
             }
 

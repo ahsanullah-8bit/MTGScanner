@@ -1,9 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtMultimedia
-import MTGScanner.Engine
 import MTGScanner.Components
+import MTGScanner.Pages
 
 ApplicationWindow {
     width: 1280
@@ -22,37 +21,20 @@ ApplicationWindow {
         SideBar {
             id: sidebar
             Layout.fillHeight: true
-            // No need to set width; it follows its own expanded/collapsed state
+
+            onCurrentIndexChanged: {
+                mainSwipeView.currentIndex = currentIndex
+            }
         }
 
-        Item {
-            id: contentArea
+        StackLayout {
+            id: mainSwipeView
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            Text {
-                anchors.centerIn: parent
-                text: "Main Content"
-                color: MTGScanner.foregroundColor
-                font.pixelSize: 28
-            }
+            Dashboard {}
+            CameraConfiguration {}
+            OutputWindows {}
         }
     }
-
-    // GridLayout {
-    //     anchors.fill: parent
-    //     columns: 2
-    //     rows: 2
-
-    //     Repeater {
-    //         model: Engine.engineLoaded ? CamerasModel : 0
-    //         delegate: VideoOutput {
-    //             Layout.fillWidth: true
-    //             Layout.fillHeight: true
-
-    //             fillMode: VideoOutput.PreserveAspectCrop
-    //             Component.onCompleted: Engine.registerCameraOutSink(model.cameraId, videoSink);
-    //         }
-    //     }
-    // }
 }

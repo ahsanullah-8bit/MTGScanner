@@ -8,3 +8,6 @@ qt_add_qml_module(${PROJECT_NAME}Pages
         CameraConfiguration.qml
         OutputWindows.qml
 )
+
+# For the MTGScanner propagator to work.
+target_link_libraries(${PROJECT_NAME}Pages PRIVATE ${PROJECT_NAME})

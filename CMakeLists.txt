@@ -4,7 +4,7 @@ project(MTGScanner VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Quick Multimedia)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Quick Multimedia QuickControls2)
 find_package(OpenCV CONFIG REQUIRED)
 find_package(TBB CONFIG REQUIRED)
 
@@ -46,6 +46,8 @@ target_link_libraries(${PROJECT_NAME}App
     ${OpenCV_LIBS}
 
     MTGScannerplugin
+    MTGScannerComponentsplugin
+    MTGScannerControlsplugin
 )
 
 include(GNUInstallDirs)
@@ -54,3 +56,12 @@ install(TARGETS ${PROJECT_NAME}App
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# Copy the compile_commands.json for tools like clangd
+if (CMAKE_EXPORT_COMPILE_COMMANDS)
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different 
+        "${CMAKE_BINARY_DIR}/compile_commands.json" 
+        "${CMAKE_SOURCE_DIR}/compile_commands.json"
+    )
+endif()

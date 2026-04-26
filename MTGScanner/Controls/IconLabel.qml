@@ -10,7 +10,7 @@ Item {
     property color color: MTGScanner.primaryColor
     property real spacing: 5
     property bool mirrored: false
-    property int alignment: Qt.AlignLeft | Qt.AlignVCenter
+    property int alignment: Qt.AlignCenter
     property bool expanded: true
     property real topPadding: 0
     property real leftPadding: 0

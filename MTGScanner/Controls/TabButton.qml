@@ -38,6 +38,7 @@ T.TabButton {
         
         expanded: control.expanded
         display: IconLabel.TextBesideIcon
+        alignment: expanded ? Qt.AlignLeft : Qt.AlignHCenter
     }
 
     background: Rectangle {

@@ -17,7 +17,7 @@ T.TabButton {
 
     icon.width: 24
     icon.height: 24
-    icon.color: !enabled ? MTGScanner.placeholderTextColor : 
+    icon.color: !enabled ? MTGScanner.disabledTextColor : 
         down || checked ? MTGScanner.accentColor : MTGScanner.placeholderTextColor
 
     contentItem: IconLabel {
@@ -29,17 +29,15 @@ T.TabButton {
         spacing: control.spacing
 
         icon: control.icon
-
         text: control.text
         font: control.font
-        color: control.expanded && 
+        color: control.expanded &&
                 (!control.enabled ? MTGScanner.disabledTextColor :
                  control.down || control.checked ? MTGScanner.accentColor :
                  MTGScanner.placeholderTextColor)
         
-        display: control.expanded ? IconLabel.TextBesideIcon : IconLabel.IconOnly
-        labelItem.opacity: control.expanded ? 1 : 0
-        Behavior on labelItem.opacity { NumberAnimation { duration: 200 } }
+        expanded: control.expanded
+        display: IconLabel.TextBesideIcon
     }
 
     background: Rectangle {
@@ -47,6 +45,6 @@ T.TabButton {
         radius: 10
         color: control.checked ? Qt.rgba(0.545, 0.639, 0.780, 0.10)  // #8BA3C7 at 10%
            : control.down ? Qt.rgba(1,1,1,0.05)                  // white/5 for press feedback
-           : "transparent" 
+           : control.hovered ? MTGScanner.hoverColor : "transparent"
     }
 }

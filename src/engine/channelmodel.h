@@ -5,20 +5,21 @@
 #include <QCameraDevice>
 #include <QAbstractListModel>
 
-#include <engine/camerainfo.hpp>
+#include <engine/channelinfo.hpp>
 
 namespace MTGS {
 
-class CameraModel : public QAbstractListModel {
+class ChannelModel : public QAbstractListModel {
     Q_OBJECT
 public:
     enum CameraRoles {
-        IdRole = Qt::UserRole + 1,
-        DescriptionRole,
-        VideoSinkRole
+        ChannelIdRole = Qt::UserRole + 1,
+        ChannelNameRole,
+        ChannelStatus,
+        CameraDeviceRole,
     };
 
-    explicit CameraModel(tbb::concurrent_unordered_map<QString, CameraInfo> &cameras, QObject *parent = nullptr);
+    explicit ChannelModel(tbb::concurrent_unordered_map<QString, ChannelInfo> &channel, QObject *parent = nullptr);
 
     // QAbstractItemModel interface
     int rowCount(const QModelIndex &parent) const override;
@@ -27,11 +28,11 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
 public slots:
-    void cameraAdded(const QCameraDevice &cameraDevice);
-    void cameraRemoved(const QCameraDevice &cameraDevice);
+    void channelAdded(const ChannelOptions &cameraDevice);
+    void channelRemoved(const ChannelOptions &cameraDevice);
 
 private:
-    tbb::concurrent_unordered_map<QString, CameraInfo> &m_cameras;
+    tbb::concurrent_unordered_map<QString, ChannelInfo> &m_channel;
 };
 
 } // namespace MTGS

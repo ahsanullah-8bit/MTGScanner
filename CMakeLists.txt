@@ -15,7 +15,10 @@ qt_add_executable(${PROJECT_NAME}App
 
     src/camera/cameracapture.h
     src/camera/cameracapture.cpp
-    src/engine/cameramodel.cpp
+    src/core/frame.hpp
+    src/core/prediction.hpp
+    src/engine/channelinfo.hpp
+    src/engine/channelmodel.cpp
     src/engine/engine.h
     src/engine/engine.cpp
 )
@@ -45,6 +48,7 @@ target_link_libraries(${PROJECT_NAME}App
     TBB::tbb
     ${OpenCV_LIBS}
 
+    MTGScanner  # the static library, just for channeloptions.hpp
     MTGScannerplugin
     MTGScannerComponentsplugin
     MTGScannerControlsplugin

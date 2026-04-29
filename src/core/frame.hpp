@@ -16,6 +16,7 @@ namespace MTGS {
     
 struct Frame {
     size_t sequenceId;
+    QString channelId;
     QString cameraId;
     QTime timestamp;
 

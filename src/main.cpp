@@ -19,8 +19,8 @@ int main(int argc, char *argv[])
     MTGS::Engine mtgsEngine;
     qmlRegisterSingletonInstance("MTGScanner.Engine", 0, 1, "Engine", &mtgsEngine);
 
-    QSharedPointer<MTGS::CameraModel> camerasModel = mtgsEngine.createSharedCameraModel();
-    qmlRegisterSingletonInstance("MTGScanner.Engine", 0, 1, "CamerasModel", camerasModel.data());
+    QSharedPointer<MTGS::ChannelModel> channelsModel = mtgsEngine.createSharedChannelModel();
+    qmlRegisterSingletonInstance("MTGScanner.Engine", 0, 1, "ChannelsModel", channelsModel.data());
 
     engine.loadFromModule("MTGScanner", "Main");
 

@@ -84,3 +84,4 @@ CMakeLists.txt.user*
 .vscode
 compile_commands.json
 **/.qmlls.ini
+.mind_map.md

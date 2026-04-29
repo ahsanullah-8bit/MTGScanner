@@ -18,7 +18,8 @@ namespace MTGS {
 class CameraCapture : public QObject {
     Q_OBJECT
 public:
-    CameraCapture(const QCameraDevice &device, tbb::flow::async_node<tbb::flow::continue_msg, FramePtr>::gateway_type &gateway, QObject*parent = nullptr);
+    CameraCapture(const QString &channelId, const QCameraDevice &device, tbb::flow::async_node<tbb::flow::continue_msg, FramePtr>::gateway_type &gateway, QObject*parent = nullptr);
+    ~CameraCapture();
     QVideoSink *videoSink();
     QCameraDevice cameraDevice() const;
 
@@ -29,6 +30,7 @@ signals:
     void errorOccurred(QCamera::Error error, const QString &errorString);
 
 private:
+    QString m_channelId;
     QCamera *m_camera;
     QCameraDevice m_cameraDevice;
     QMediaCaptureSession *m_captureSession;

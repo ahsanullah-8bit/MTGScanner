@@ -4,9 +4,14 @@ namespace MTGS {
 
 namespace tflow = tbb::flow;
 
-CameraCapture::CameraCapture(const QCameraDevice &device, tflow::async_node<tflow::continue_msg, FramePtr>::gateway_type &gateway, QObject* parent) 
-    : QObject(parent), m_cameraDevice(device), m_gateway(gateway)
+CameraCapture::CameraCapture(const QString &channelId, const QCameraDevice &device, tflow::async_node<tflow::continue_msg, FramePtr>::gateway_type &gateway, QObject* parent) 
+    : QObject(parent), m_channelId(channelId), m_cameraDevice(device), m_gateway(gateway)
 {}
+
+CameraCapture::~CameraCapture()
+{
+    m_camera->stop();
+}
 
 QVideoSink *CameraCapture::videoSink()
 {
@@ -33,6 +38,7 @@ void CameraCapture::init()
         FramePtr f(new Frame{});
         f->mat = mat.clone();
         f->sequenceId = m_frameSequenceCount++;
+        f->channelId = m_channelId;
         f->cameraId = m_cameraDevice.id();
         f->timestamp = QTime::currentTime();
 

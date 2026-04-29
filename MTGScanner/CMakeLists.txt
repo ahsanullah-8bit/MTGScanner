@@ -5,11 +5,13 @@ qt_add_qml_module(${PROJECT_NAME}
     QML_FILES
         Main.qml
     SOURCES
+        channeloptions.hpp
         mtgscanner.h
         mtgscanner.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC Qt6::QuickControls2)
+target_link_libraries(${PROJECT_NAME} PUBLIC Qt6::QuickControls2 Qt6::Multimedia)
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(Pages)
 add_subdirectory(Components)

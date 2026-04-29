@@ -4,6 +4,7 @@ qt_add_qml_module(${PROJECT_NAME}Components
     URI MTGScanner.Components
     VERSION 1.0
     QML_FILES
+        ChannelWizard.qml
         SideBar.qml
 
     RESOURCES

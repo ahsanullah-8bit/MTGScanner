@@ -11,25 +11,25 @@
 #include <QCameraDevice>
 
 #include <camera/cameracapture.h>
-#include <engine/camerainfo.hpp>
-#include <engine/cameramodel.h>
+#include <engine/channelinfo.hpp>
+#include <engine/channelmodel.h>
 
 namespace MTGS {
 
 class EngineWorker : public QObject {
     Q_OBJECT
 public:
-    EngineWorker(tbb::concurrent_unordered_map<QString, CameraInfo> &cameras, QObject *parent = nullptr);
+    EngineWorker(tbb::concurrent_unordered_map<QString, ChannelInfo> &channels, QObject *parent = nullptr);
     virtual ~EngineWorker();
 
 public slots:
     void init();
-    void registerCamera(const QCameraDevice &cameraDevice, QVideoSink *videoSink = nullptr, int maxInFlight = 16);
+    void addChannel(const MTGS::ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16);
     
 signals:
     void engineLoaded(bool loaded = true);
-    void cameraRegistered(const QCameraDevice &cameraDevice);
-    void sendFrameToMainThread(const FramePtr& frame);
+    void channelAdded(const MTGS::ChannelOptions &channelOptions);
+    void sendFrameToMainThread(const MTGS::FramePtr& frame);
 
 private:
     tf::graph m_graph;
@@ -37,7 +37,7 @@ private:
     QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<tf::continue_msg>>> m_frameDistributor;
     QSharedPointer<tf::function_node<FramePtr>> m_uiNotifier;
 
-    tbb::concurrent_unordered_map<QString, CameraInfo> &m_cameras;
+    tbb::concurrent_unordered_map<QString, ChannelInfo> &m_channels;
 };
 
 class Engine : public QObject {
@@ -46,18 +46,20 @@ class Engine : public QObject {
 public:
     Engine();
     ~Engine();
-    CameraModel createCameraModel();
-    QSharedPointer<CameraModel> createSharedCameraModel();
+    QSharedPointer<ChannelModel> createSharedChannelModel();
     bool isEngineLoaded() const;
+    Q_INVOKABLE QString createChannelId() const;
+    Q_INVOKABLE ChannelOptions createChannelOptions() const;
+    Q_INVOKABLE ChannelOptions channelOptions(const QString &channelId) const;
 
 public slots:
-    void receiveFrameNotification(const FramePtr& frame);
-    Q_INVOKABLE void registerCamera(const QCameraDevice &cameraDevice, QVideoSink *videoSink = nullptr, int maxInFlight = 16);
-    Q_INVOKABLE void registerCameraOutSink(const QString &cameraId, QVideoSink *videoSink);
+    void receiveFrameNotification(const MTGS::FramePtr& frame);
+    Q_INVOKABLE void addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16);
+    Q_INVOKABLE void registerChannelOutSink(const QString &channelId, QVideoSink *videoSink);
 
 signals:
     void engineLoaded(bool loaded = true);
-    void cameraRegistered(const QCameraDevice &cameraDevice);
+    void channelAdded(const MTGS::ChannelOptions &channelOptions);
 
 private:
     void setEngineLoaded(bool loaded);
@@ -68,7 +70,7 @@ private:
         EngineWorker *worker;
         QThread *thread;
     } m_engine;
-    tbb::concurrent_unordered_map<QString, CameraInfo> m_cameras;
+    tbb::concurrent_unordered_map<QString, ChannelInfo> m_channels;
 };
 
 } // namespace MTGS

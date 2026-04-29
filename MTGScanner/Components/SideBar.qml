@@ -3,20 +3,15 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import MTGScanner // for the theme colors
 import MTGScanner.Controls
+import MTGScanner.Engine
 
 Control {
     id: root
 
     property int currentIndex: 0
-    property bool expanded: false
-    readonly property int collapsedWidth: 60
-    readonly property int expandedWidth: 220
-    readonly property int animationDuration: 200
-
-    implicitWidth: expanded ? expandedWidth : collapsedWidth
-    Behavior on implicitWidth { NumberAnimation { duration: animationDuration; easing.type: Easing.OutCubic } }
-
-    Layout.fillHeight: true
+    property alias channelModel: channelListView.model
+    property channelOptions currentChannelOptions
+    signal addChannelClicked()
 
     background: Rectangle {
         anchors.fill: parent
@@ -25,78 +20,79 @@ Control {
 
     contentItem: ColumnLayout {
         anchors.fill: parent
-        spacing: 0
+        anchors.margins: 12
+        spacing: 12
 
-        Item {
+        Label {
+            text: "SCAN CHANNELS"
+            font.pixelSize: 12
+            font.bold: true
+            color: "#333"
+
             Layout.fillWidth: true
-            Layout.preferredHeight: 56
-            Layout.leftMargin: 12
-
-            Button {
-                id: toggleButton
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                icon.source: "icons/menu.svg"
-                icon.width: 24
-                icon.height: 24
-                icon.color: MTGScanner.disabledTextColor
-                flat: true
-                background: Rectangle {
-                    color: toggleButton.hovered ? MTGScanner.hoverColor : "transparent"
-                    radius: 8
-                }
-                onClicked: root.expanded = !root.expanded
-            }
         }
 
-        // Separator
-        Rectangle {
-            Layout.fillWidth: true
-            implicitHeight: 1
-            color: MTGScanner.separatorColor
-        }
+        // // Separator
+        // Rectangle {
+        //     Layout.fillWidth: true
+        //     implicitHeight: 1
+        //     color: MTGScanner.separatorColor
+        // }
 
-        ColumnLayout {
+        ListView {
+            id: channelListView
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.leftMargin: 8
-            Layout.rightMargin: 8
-            Layout.topMargin: 8
-            Layout.alignment: Qt.AlignTop
             spacing: 4
 
-            Repeater {
-                model: [
-                    { name: "DASHBOARD",        icon: "qrc:/qt/qml/MTGScanner/Components/icons/dashboard.svg" },
-                    { name: "CONFIGURATION",    icon: "qrc:/qt/qml/MTGScanner/Components/icons/configuration.svg" },
-                    { name: "OUTPUT WINDOWS",   icon: "qrc:/qt/qml/MTGScanner/Components/icons/outputwindows.svg" }
-                ]
+            model: 4
+            delegate: Button {
+                width: channelListView.width
+                height: 48
+                background: Rectangle {
+                    color: index === 0 ? "#333" : "transparent"
+                    Rectangle {
+                        width: 3; height: parent.height
+                        color: index === 0 ? "#ff6b6b" : "transparent"
+                    }
+                }
 
-                delegate: TabButton {
-                    readonly property int itemIndex: index
+                contentItem: RowLayout {
+                    spacing: 10
+                    Rectangle {
+                        width: 12; height: 12; radius: 6
+                        color: index > 2 ? "#4ecdc4" : "#ff6b6b"
+                    }
+                    Label {
+                        text: model.channelName
+                        font.pixelSize: 13
+                        font.weight: Font.Medium
+                        color: "white"
+                        Layout.fillWidth: true
+                    }
 
-                    icon.source: modelData.icon
-                    icon.width: 24
-                    icon.height: 24
-                    text: modelData.name
-                    font.pixelSize: 12
-                    font.weight: Font.DemiBold
-                    expanded: root.expanded
-                    checked: itemIndex === root.currentIndex
+                    Label {
+                        text: index
+                        font.pixelSize: 11
+                        color: "#aaa"
+                    }
+                }
 
-                    spacing: 14
-                    leftPadding: 10
-                    rightPadding: 10
-                    Layout.preferredHeight: 40
-                    Layout.fillWidth: true
-
-                    onClicked: root.currentIndex = itemIndex
+                onClicked: {
+                    root.currentChannelOptions = Engine.channelOptions(model.channelId)
+                    channelListView.currentIndex = index
                 }
             }
+        }
 
-            Item {
-                Layout.fillHeight: true
-            }
+        // Add Channel
+        Button {
+            text: "Add Channel"
+
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
+
+            onClicked: root.addChannelClicked()
         }
     }
 }

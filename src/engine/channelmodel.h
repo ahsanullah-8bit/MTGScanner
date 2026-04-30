@@ -15,7 +15,7 @@ public:
     enum CameraRoles {
         ChannelIdRole = Qt::UserRole + 1,
         ChannelNameRole,
-        ChannelStatus,
+        ChannelOnlineStatus,
         CameraDeviceRole,
     };
 

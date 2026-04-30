@@ -4,62 +4,71 @@ import QtQuick.Layouts
 import MTGScanner // for the theme colors
 import MTGScanner.Engine
 
-Control {
+Drawer {
     id: root
 
-    property alias currentIndex: channelListView.currentIndex
-    property alias channelModel: channelListView.model
+    property alias currentIndex: channelList.currentIndex
+    property alias channelModel: channelList.model
     property channelOptions currentChannelOptions
     signal addChannelClicked()
 
-    background: Rectangle {
+    ColumnLayout {
         anchors.fill: parent
-        color: MTGScanner.surfaceColor
-    }
+        spacing: 8
 
-    contentItem: ColumnLayout {
-        anchors.fill: parent
-        anchors.margins: 12
-        spacing: 12
-
-        Label {
-            text: "SCAN CHANNELS"
-            font.pixelSize: 12
-            font.bold: true
-            color: "#333"
-
+        // Header
+        Pane {
             Layout.fillWidth: true
+            padding: 16
+
+            Label {
+                text: "SCAN CHANNELS"
+                font.pixelSize: 14
+                font.weight: Font.DemiBold
+                color: Material.foreground
+            }
         }
 
-        // // Separator
-        // Rectangle {
-        //     Layout.fillWidth: true
-        //     implicitHeight: 1
-        //     color: MTGScanner.separatorColor
-        // }
-
+        // Channels
         ListView {
-            id: channelListView
+            id: channelList
+            
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 4
 
-            delegate: Button {
-                width: channelListView.width
-                height: 48
-                Material.roundedScale: Material.SmallScale
+            delegate: ItemDelegate {
+                width: ListView.view.width
+                highlighted: index === ListView.view.currentIndex
 
-                text: model.channelName
-                font.pixelSize: 13
-                font.weight: Font.Medium
-                flat: true
-                checkable: true
-                autoExclusive: true
-                checked: channelListView.currentIndex === index
+                contentItem: Row {
+                    spacing: 12
+                    Rectangle {
+                        width: 12; height: 12; radius: 6
+                        color: model.online ? Material.accent
+                                                : Material.color(Material.Grey, Material.Shade400)
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Label {
+                        text: model.channelName
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Item { width: 1; Layout.fillWidth: true } // spacer
+
+                    ToolButton {
+                        icon.name: "close"
+                        visible: highlighted
+                        onClicked: {
+                            channelModel.remove(index);
+                            if (channelModel.count === 0) {
+                                root.addChannelClicked()
+                            }
+                        }
+                    }
+                }
 
                 onClicked: {
                     root.currentChannelOptions = Engine.channelOptions(model.channelId)
-                    channelListView.currentIndex = index
+                    channelList.currentIndex = index
                 }
 
                 Component.onCompleted: {
@@ -67,22 +76,35 @@ Control {
                         return
 
                     root.currentChannelOptions = Engine.channelOptions(model.channelId)
-                    channelListView.currentIndex = index
+                    channelList.currentIndex = index
                 }
             }
         }
 
         // Add Channel
-        Button {
+        // Button {
+        //     Layout.fillWidth: true
+        //     Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
+
+        //     Material.roundedScale: Material.SmallScale 
+
+        //     text: "Add Channel"
+        //     highlighted: true
+
+        //     onClicked: root.addChannelClicked()
+        // }
+
+        // Add channel button
+        Pane {
             Layout.fillWidth: true
-            Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
-
-            Material.roundedScale: Material.SmallScale 
-
-            text: "Add Channel"
-            highlighted: true
-
-            onClicked: root.addChannelClicked()
+            padding: 12
+            Button {
+                text: "Add Channel"
+                flat: true
+                width: parent.width
+                icon.name: "add"
+                onClicked: console.log("Add channel (demo)")
+            }
         }
     }
 }

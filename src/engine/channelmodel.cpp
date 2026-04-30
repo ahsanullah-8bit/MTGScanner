@@ -26,6 +26,8 @@ QVariant ChannelModel::data(const QModelIndex &index, int role) const
             return it->first;
         case ChannelNameRole:
             return channelInfo.channelOptions.name;
+        case ChannelOnlineStatus:
+            return channelInfo.isValid;
         case CameraDeviceRole:
             return QVariant::fromValue(channelInfo.channelOptions.cameraDevice);
         default:
@@ -38,6 +40,7 @@ QHash<int, QByteArray> ChannelModel::roleNames() const
     static QHash<int, QByteArray> roles {
         {ChannelIdRole, "channelId"},
         {ChannelNameRole, "channelName"},
+        {ChannelOnlineStatus, "online"},
         {CameraDeviceRole, "device"}
     };
 

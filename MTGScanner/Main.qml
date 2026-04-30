@@ -12,71 +12,54 @@ ApplicationWindow {
     title: qsTr("MTGScanner")
 
     MTGScanner.theme: MTGScanner.Dark
-
     color: MTGScanner.backgroundColor
 
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: 0
-
-        Rectangle {
-            color: MTGScanner.surfaceColor
-            Layout.fillWidth: true
-            Layout.preferredHeight: 60
-
-            RowLayout {
-                anchors.fill: parent
-
-                Text {
-                    text: "MTGScanner"
-                    font.pixelSize: 18
-                    font.weight: Font.Medium
-                    color: MTGScanner.surfaceTextColor
-                    horizontalAlignment: Text.AlignHCenter
-
-                    Layout.leftMargin: 10
-                    Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
-                }
-            }
-        }
-
-
+    header: ToolBar {
         RowLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 0
+            anchors.fill: parent
+            spacing: 8
 
-            SideBar {
-                id: sidebar
-
-                channelModel: ChannelsModel
-
-                Layout.fillHeight: true
-                Layout.preferredWidth: 220
-
-                onAddChannelClicked: channelWizardLoader.active = true
+            ToolButton {
+                icon.name: "menu"
+                onClicked: sidebar.open()
             }
 
-            StackView {
-                id: mainStackView
+            Label {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
 
-                initialItem: configurationPage
+                text: "MTGScanner"
+                font.pixelSize: 20
+                font.weight: Font.Medium
+            }
+
+            ToolButton {
+                icon.name: "play_arrow"
+                onClicked: console.log("Start All")
+            }
+            ToolButton {
+                icon.name: "stop"
+                onClicked: console.log("Stop All")
             }
         }
     }
 
-    Component {
-        id: configurationPage
+    SideBar {
+        id: sidebar
 
-        Dashboard {
-            id: dashboard
-            Layout.fillWidth: true
-            Layout.fillHeight: true
+        width: 256
+        height: parent.height
+        edge: Qt.LeftEdge
+        modal: false
+        interactive: true
+        channelModel: ChannelsModel
 
-            channelOps: sidebar.currentChannelOptions
-        }
+        onAddChannelClicked: channelWizardLoader.active = true
+    }
+
+    Dashboard {
+        anchors.fill: parent
+
+        channelOps: sidebar.currentChannelOptions
     }
     
     // Channel Wizard Loader

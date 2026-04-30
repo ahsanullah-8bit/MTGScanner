@@ -25,6 +25,7 @@ struct ChannelInfo {
     QSharedPointer<tf::sequencer_node<FramePtr>> postSequencer;
     size_t skippedFramesCount = 0;
 
+    bool isValid = true;
     ChannelOptions channelOptions;
 };
 

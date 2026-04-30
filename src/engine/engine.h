@@ -8,6 +8,7 @@
 #include <QString>
 #include <QHash>
 #include <QVideoSink>
+#include <QSettings>
 #include <QCameraDevice>
 
 #include <camera/cameracapture.h>
@@ -24,8 +25,10 @@ public:
 
 public slots:
     void init();
-    void addChannel(const MTGS::ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16);
-    
+    void saveToSettings();
+    void loadFromSettings();
+    void addChannel(const MTGS::ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16, QScreen *screen = nullptr);
+
 signals:
     void engineLoaded(bool loaded = true);
     void channelAdded(const MTGS::ChannelOptions &channelOptions);
@@ -54,7 +57,7 @@ public:
 
 public slots:
     void receiveFrameNotification(const MTGS::FramePtr& frame);
-    Q_INVOKABLE void addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16);
+    Q_INVOKABLE void addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16, QScreen *screen = nullptr);
     Q_INVOKABLE void registerChannelOutSink(const QString &channelId, QVideoSink *videoSink);
 
 signals:

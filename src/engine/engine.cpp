@@ -1,9 +1,16 @@
+#include <algorithm>
 #include <tuple>
 
+#include <QList>
 #include <QUuid>
 #include <QThread>
+#include <QScreen>
+#include <QVariant>
+#include <QSettings>
 #include <QMetaObject>
+#include <QCameraDevice>
 #include <QMediaDevices>
+#include <QGuiApplication>
 #include <QLoggingCategory>
 
 #include <core/frame.hpp>
@@ -28,6 +35,9 @@ EngineWorker::~EngineWorker()
     }
     // Close the graph
     m_graph.wait_for_all();
+
+    // Save the channel configs to settings.
+    saveToSettings();
 }
 
 void EngineWorker::init() 
@@ -74,10 +84,97 @@ void EngineWorker::init()
 
     tf::make_edge(*m_processor, *m_frameDistributor);
 
+    // Load the channel settings
+    loadFromSettings();
+
     emit engineLoaded();
 }
 
-void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink, int maxInFlight)
+
+void EngineWorker::saveToSettings()
+{
+    QSettings settings;
+    settings.beginWriteArray("channels");
+
+    size_t i = 0;
+    for (auto it = m_channels.cbegin(); it != m_channels.cend(); ++it) {
+        const auto& options = it->second.channelOptions;
+        settings.setArrayIndex(i++);
+        settings.setValue("id", options.id);
+        settings.setValue("name", options.name);
+        settings.setValue("maxInFlight", options.maxInFlight);
+        settings.setValue("detThresh", options.detectionThreshold);
+        settings.setValue("filters", QVariant::fromValue(options.filters));
+        settings.setValue("cameraDeviceId", options.cameraDevice.id());
+        settings.setValue("cameraDeviceDesc", options.cameraDevice.description());
+        settings.setValue("winName", options.windowName);
+        settings.setValue("winGeometry", options.windowGeometry);
+        settings.setValue("screenSerialNo", options.screenSerialNo);
+        settings.setValue("screenName", options.screenName);
+    }
+
+    settings.endArray();
+}
+
+void EngineWorker::loadFromSettings()
+{
+    QList<QCameraDevice> cameras = QMediaDevices::videoInputs();
+    QList<QScreen*> screens = QGuiApplication::screens();
+
+    QSettings settings;
+    auto size = settings.beginReadArray("channels");
+    for(decltype(size) i = 0; i < size; ++i) {
+        settings.setArrayIndex(i);
+
+        ChannelOptions options;
+        options.id = settings.value("id").toString();
+        options.name = settings.value("name").toString();
+        options.maxInFlight = settings.value("maxInFlight").toInt();
+        options.detectionThreshold = settings.value("detThresh").toFloat();
+        options.filters = settings.value("filters").toStringList();
+        options.windowName = settings.value("winName").toString();
+        options.windowGeometry = settings.value("winGeometry").toRect();
+
+        // Verify CameraDevice
+        const QString camera_id = settings.value("cameraDeviceId").toString();
+        const QString camera_desc = settings.value("cameraDeviceDesc").toString();
+        const auto cam_it = std::find_if(cameras.begin(), cameras.end(),
+            [&camera_id, &camera_desc] (const QCameraDevice &camera) {
+                return camera.id() == camera_id || camera.description() == camera_desc;
+            }
+        );
+
+        if (cam_it != cameras.end())
+            options.cameraDevice = *cam_it;
+
+        // Verify Screen
+        options.screenSerialNo = settings.value("screenSerialNo").toString();
+        options.screenName = settings.value("screenName").toString();
+        const auto screen_it = std::find_if(screens.begin(), screens.end(),
+            [&options] (QScreen *s) {
+                return s->serialNumber() == options.screenSerialNo || s->name() == options.screenName;
+            }
+        );
+
+        QScreen *screen = nullptr;
+        if (screen_it == screens.end()) {
+            // Launch the window in the primary screen.
+            screen = QGuiApplication::primaryScreen();
+            options.screenSerialNo = screen->serialNumber();
+            options.screenName = screen->name();
+            addChannel(options, nullptr, 16, screen);
+        } else {
+            screen = *screen_it;
+        }
+
+        // Add the channel
+        addChannel(options, nullptr, 16, *screen_it);
+    }
+
+    settings.endArray();
+}
+
+void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink, int maxInFlight, QScreen *screen)
 {
     if (!channelOptions.isValid()) {
         return;
@@ -192,11 +289,15 @@ void Engine::registerChannelOutSink(const QString &channelId, QVideoSink *videoS
     m_channels.at(channelId).outVideoSink = videoSink;
 }
 
-void Engine::addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink, int maxInFlight)
+void Engine::addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink, int maxInFlight, QScreen *screen)
 {
     if (m_engine.thread && m_engine.worker) {
         QMetaObject::invokeMethod(m_engine.worker, "addChannel", Qt::AutoConnection,
-            Q_ARG(ChannelOptions, channelOptions), Q_ARG(QVideoSink*, videoSink), Q_ARG(int, maxInFlight));
+            Q_ARG(ChannelOptions, channelOptions),
+            Q_ARG(QVideoSink*, videoSink),
+            Q_ARG(int, maxInFlight),
+            Q_ARG(QScreen*, screen)
+        );
     } else {
         qCCritical(engine_logger) << "Worker thread not initialized yet. Cannot add channel" << channelOptions.name;
     }

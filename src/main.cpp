@@ -8,6 +8,10 @@ int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
 
+    QCoreApplication::setOrganizationName("MadStudio");
+    QCoreApplication::setOrganizationDomain("MadStudio.io");
+    QCoreApplication::setApplicationName("MTGScanner");
+
     QQmlApplicationEngine engine;
     QObject::connect(
         &engine,

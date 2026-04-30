@@ -23,6 +23,12 @@ qt_add_executable(${PROJECT_NAME}App
     src/engine/engine.cpp
 )
 
+qt_add_resources(${CMAKE_PROJECT_NAME}App "configuration"
+    PREFIX "/"
+    FILES
+        qtquickcontrols2.conf
+)
+
 add_subdirectory(MTGScanner)
 
 set_target_properties(${PROJECT_NAME}App PROPERTIES

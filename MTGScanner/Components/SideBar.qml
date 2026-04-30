@@ -2,13 +2,12 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import MTGScanner // for the theme colors
-import MTGScanner.Controls
 import MTGScanner.Engine
 
 Control {
     id: root
 
-    property int currentIndex: 0
+    property alias currentIndex: channelListView.currentIndex
     property alias channelModel: channelListView.model
     property channelOptions currentChannelOptions
     signal addChannelClicked()
@@ -45,40 +44,28 @@ Control {
             Layout.fillHeight: true
             spacing: 4
 
-            model: 4
             delegate: Button {
                 width: channelListView.width
                 height: 48
-                background: Rectangle {
-                    color: index === 0 ? "#333" : "transparent"
-                    Rectangle {
-                        width: 3; height: parent.height
-                        color: index === 0 ? "#ff6b6b" : "transparent"
-                    }
-                }
+                Material.roundedScale: Material.SmallScale
 
-                contentItem: RowLayout {
-                    spacing: 10
-                    Rectangle {
-                        width: 12; height: 12; radius: 6
-                        color: index > 2 ? "#4ecdc4" : "#ff6b6b"
-                    }
-                    Label {
-                        text: model.channelName
-                        font.pixelSize: 13
-                        font.weight: Font.Medium
-                        color: "white"
-                        Layout.fillWidth: true
-                    }
-
-                    Label {
-                        text: index
-                        font.pixelSize: 11
-                        color: "#aaa"
-                    }
-                }
+                text: model.channelName
+                font.pixelSize: 13
+                font.weight: Font.Medium
+                flat: true
+                checkable: true
+                autoExclusive: true
+                checked: channelListView.currentIndex === index
 
                 onClicked: {
+                    root.currentChannelOptions = Engine.channelOptions(model.channelId)
+                    channelListView.currentIndex = index
+                }
+
+                Component.onCompleted: {
+                    if (root.currentChannelOptions.isValid())
+                        return
+
                     root.currentChannelOptions = Engine.channelOptions(model.channelId)
                     channelListView.currentIndex = index
                 }
@@ -87,10 +74,13 @@ Control {
 
         // Add Channel
         Button {
-            text: "Add Channel"
-
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
+
+            Material.roundedScale: Material.SmallScale 
+
+            text: "Add Channel"
+            highlighted: true
 
             onClicked: root.addChannelClicked()
         }

@@ -5,6 +5,8 @@ qt_add_qml_module(${PROJECT_NAME}Pages
     VERSION 1.0
     QML_FILES
         Dashboard.qml
+    RESOURCES
+        icons/check.svg
 )
 
 # For the MTGScanner propagator to work.

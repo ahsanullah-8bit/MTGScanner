@@ -223,8 +223,8 @@ Dialog {
                     id: outputNameField
                     Layout.fillWidth: true
                     placeholderText: "Window Name"
-                    text: dialog.channelConfig.outputWindow.name
-                    onTextEdited: dialog.channelConfig.outputWindow.name = text
+                    text: dialog.channelConfig.windowName
+                    onTextEdited: dialog.channelConfig.windowName = text
                 }
 
                 // Height x Width
@@ -239,8 +239,8 @@ Dialog {
                             id: outputXSpin
                             from: 0
                             to: 7680
-                            value: dialog.channelConfig.outputWindow.x
-                            onValueModified: dialog.channelConfig.outputWindow.x = value
+                            value: dialog.channelConfig.windowGeometry.x
+                            onValueModified: dialog.channelConfig.windowGeometry.x = value
                             editable: true
                         }
                     }
@@ -253,8 +253,8 @@ Dialog {
                             id: outputYSpin
                             from: 0
                             to: 4320
-                            value: dialog.channelConfig.outputWindow.y
-                            onValueModified: dialog.channelConfig.outputWindow.y = value
+                            value: dialog.channelConfig.windowGeometry.y
+                            onValueModified: dialog.channelConfig.windowGeometry.y = value
                             editable: true
                         }
                     }
@@ -267,8 +267,8 @@ Dialog {
                             id: outputWidthSpin
                             from: 100
                             to: 3840
-                            value: dialog.channelConfig.outputWindow.width
-                            onValueModified: dialog.channelConfig.outputWindow.width = value
+                            value: dialog.channelConfig.windowGeometry.width
+                            onValueModified: dialog.channelConfig.windowGeometry.width = value
                             editable: true
                         }
                     }
@@ -281,8 +281,8 @@ Dialog {
                             id: outputHeightSpin
                             from: 100
                             to: 2160
-                            value: dialog.channelConfig.outputWindow.height
-                            onValueModified: dialog.channelConfig.outputWindow.height = value
+                            value: dialog.channelConfig.windowGeometry.height
+                            onValueModified: dialog.channelConfig.windowGeometry.height = value
                             editable: true
                         }
                     }
@@ -295,7 +295,7 @@ Dialog {
                     Layout.columnSpan: 2
                     model: ["Primary Monitor", "Secondary Monitor (Right)", "Secondary Monitor (Left)"]
                     currentIndex: 0
-                    onCurrentTextChanged: dialog.channelConfig.outputWindow.targetMonitor = currentText
+                    onCurrentTextChanged: dialog.channelConfig.screenName = currentText
                 }
             }
         }

@@ -1,10 +1,10 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Controls.Material as Mt
+import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtMultimedia
 import MTGScanner
 import MTGScanner.Engine
+import MTGScanner.Components
 
 Page {
     id: page
@@ -14,7 +14,7 @@ Page {
 
     onChannelOpsChanged: {
         if (channelOps.isValid()) {
-            Engine.registerChannelOutSink(channelOps.id, videoOutput.videoSink)
+            Engine.registerChannelOutSink(channelOps.id, videoCard.videoOutput.videoSink)
         }
     }
 
@@ -26,6 +26,16 @@ Page {
         color: MTGScanner.backgroundColor
     }
 
+    Label {
+        text: "No Channels yet. Please create one!"
+        font.pixelSize: 16
+        font.bold: true
+        color: Material.hintTextColor
+        visible: !page.channelOps.isValid()
+
+        anchors.centerIn: parent
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.leftMargin: 20
@@ -33,6 +43,7 @@ Page {
         anchors.topMargin: 16
         anchors.bottomMargin: 16
         spacing: 16
+        visible: page.channelOps.isValid()
 
         // Configuration Header
         Rectangle {
@@ -59,19 +70,11 @@ Page {
         }
 
         // Live Preview Section
-        Rectangle {
+        CameraPreviewCard {
+            id: videoCard
+
             Layout.fillWidth: true
             Layout.fillHeight: true
-            color: "black"
-            radius: 12
-            clip: true
-
-            VideoOutput {
-                id: videoOutput
-                anchors.fill: parent
-                fillMode: VideoOutput.PreserveAspectFit
-                // Component.onCompleted: Engine.registerChannelOutSink(page.channelOps.id, videoSink);
-            }
         }
 
         // Configuration Section
@@ -81,110 +84,25 @@ Page {
             Layout.preferredHeight: 130
             spacing: 10
 
-            // Camera Source Configuration
-            Rectangle {
-                radius: 12
-                color: MTGScanner.surfaceColor
+            CameraSourceCard {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 16
-                    Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-                    spacing: 10
-
-                    Text {
-                        text: "CAMERA SOURCE"
-                        color: MTGScanner.surfaceTextColor
-                        font.pixelSize: 18
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-
-                    Text {
-                        text: page.channelOps.cameraDevice.description
-                        color: MTGScanner.foregroundColor
-                        font.pixelSize: 24
-                        font.bold: true
-                        horizontalAlignment: Text.AlignLeft
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                    }
-                }
+                camera: page.channelOps.cameraDevice
             }
 
-            // Active Filters
-            Rectangle {
-                radius: 12
-                color: MTGScanner.surfaceColor
+            ActiveFiltersCard {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 16
-                    Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-                    spacing: 10
-
-                    Text {
-                        text: "ACTIVE FILTERS"
-                        color: MTGScanner.surfaceTextColor
-                        font.pixelSize: 18
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-
-                    RowLayout {
-                        Button {
-                            text: "Filter 1"
-                        }
-                        Button {
-                            text: "Filter 2"
-                        }
-                        Button {
-                            text: "Filter 3"
-                        }
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                    }
-                }
+                filters: ["Rare+", "Foil Only"]
             }
 
-            // Output Window Configuration
-            Rectangle {
-                radius: 12
-                color: MTGScanner.surfaceColor
+            OutputWindowCard {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 16
-                    Layout.alignment: Qt.AlignTop | Qt.AlignLeft
-                    spacing: 10
-
-                    Text {
-                        text: "OUTPUT WINDOW"
-                        color: MTGScanner.surfaceTextColor
-                        font.pixelSize: 18
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-
-                    ComboBox {
-                        Layout.fillWidth: true
-                        model: ["Camera 1", "Camera 2", "Camera 3"]
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                    }
-                }
+                options: page.channelOps
             }
         }
 

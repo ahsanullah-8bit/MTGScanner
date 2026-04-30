@@ -4,6 +4,10 @@ qt_add_qml_module(${PROJECT_NAME}Components
     URI MTGScanner.Components
     VERSION 1.0
     QML_FILES
+        ActiveFiltersCard.qml
+        CameraPreviewCard.qml
+        CameraSourceCard.qml
+        OutputWindowCard.qml
         ChannelWizard.qml
         SideBar.qml
 

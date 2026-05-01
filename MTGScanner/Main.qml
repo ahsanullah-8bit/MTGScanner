@@ -6,6 +6,7 @@ import MTGScanner.Pages
 import MTGScanner.Engine
 
 ApplicationWindow {
+    id: window
     width: 1200
     height: 900
     visible: true
@@ -13,6 +14,8 @@ ApplicationWindow {
 
     MTGScanner.theme: MTGScanner.Dark
     color: MTGScanner.backgroundColor
+
+    property bool showDrawer: width > 1250
 
     header: ToolBar {
         RowLayout {
@@ -47,10 +50,13 @@ ApplicationWindow {
         id: sidebar
 
         width: 256
-        height: parent.height
+        height: window.height - header.height
+        topMargin: header.height
         edge: Qt.LeftEdge
-        modal: false
-        interactive: true
+        modal: !window.showDrawer
+        interactive: !window.showDrawer
+        position: window.showDrawer ? 1 : 0
+        visible: window.showDrawer
         channelModel: ChannelsModel
 
         onAddChannelClicked: channelWizardLoader.active = true
@@ -58,6 +64,7 @@ ApplicationWindow {
 
     Dashboard {
         anchors.fill: parent
+        anchors.leftMargin: window.showDrawer ? sidebar.width : undefined
 
         channelOps: sidebar.currentChannelOptions
     }

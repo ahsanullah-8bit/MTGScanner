@@ -33,16 +33,8 @@ Pane {
             Layout.alignment: Qt.AlignVCenter
 
             icon.source: "qrc:/qt/qml/MTGScanner/icons/" + (root.channelRunning ? "pause.svg" : "play.svg")
+            opacity: 0.8
             onClicked: startChannel()
         }
-
-        // ToolButton {
-        //     Layout.alignment: Qt.AlignVCenter
-
-        //     icon.source: 
-        //     icon.width: 24
-        //     icon.height: 24
-        //     onClicked: stopChannel()
-        // }
     }
 }

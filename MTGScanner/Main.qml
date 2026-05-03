@@ -36,6 +36,7 @@ ApplicationWindow {
                 Layout.fillHeight: true
 
                 icon.source: "qrc:/qt/qml/MTGScanner/icons/" + (false ? "pause.svg" : "play.svg")
+                opacity: 0.8
                 onClicked: console.log("Start All")
             }
         }

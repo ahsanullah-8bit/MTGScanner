@@ -71,6 +71,7 @@ Drawer {
                             Layout.alignment: Qt.AlignVCenter
 
                             icon.source: "qrc:/qt/qml/MTGScanner/icons/trash-2.svg"
+                            opacity: 0.6
                             visible: channelDelegate.highlighted
                             onClicked: {
                                 channelModel.remove(index);

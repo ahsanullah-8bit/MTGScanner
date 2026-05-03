@@ -12,21 +12,20 @@ Drawer {
     property channelOptions currentChannelOptions
     signal addChannelClicked()
 
+    Material.roundedScale: Material.SmallScale
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 8
 
         // Header
-        Pane {
+        Label {
             Layout.fillWidth: true
             padding: 16
 
-            Label {
-                text: "SCAN CHANNELS"
-                font.pixelSize: 14
-                font.weight: Font.DemiBold
-                color: Material.foreground
-            }
+            text: "SCAN CHANNELS"
+            font.pixelSize: 14
+            font.weight: Font.DemiBold
         }
 
         // Channels
@@ -37,30 +36,47 @@ Drawer {
             Layout.fillHeight: true
 
             delegate: ItemDelegate {
+                id: channelDelegate
                 width: ListView.view.width
+                height: 60
+
                 highlighted: index === ListView.view.currentIndex
 
-                contentItem: Row {
-                    spacing: 12
-                    Rectangle {
-                        width: 12; height: 12; radius: 6
-                        color: model.online ? Material.accent
-                                                : Material.color(Material.Grey, Material.Shade400)
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    Label {
-                        text: model.channelName
-                        anchors.verticalCenter: parent.verticalCenter
-                    }
-                    Item { width: 1; Layout.fillWidth: true } // spacer
+                contentItem: Item {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
 
-                    ToolButton {
-                        icon.name: "close"
-                        visible: highlighted
-                        onClicked: {
-                            channelModel.remove(index);
-                            if (channelModel.count === 0) {
-                                root.addChannelClicked()
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: 12
+
+                        Rectangle {
+                            Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+
+                            width: 12; height: 12; radius: 6
+                            color: model.online ? Material.accent
+                                                    : Material.color(Material.Grey, Material.Shade400)
+                        }
+                        Label {
+                            Layout.alignment: Qt.AlignVCenter
+
+                            text: model.channelName
+                            font: channelDelegate.font
+                        }
+                        Item { Layout.fillHeight: true; Layout.fillWidth: true } // spacer
+
+                        ToolButton {
+                            Layout.fillHeight: true
+                            Layout.alignment: Qt.AlignVCenter
+
+                            icon.source: "qrc:/qt/qml/MTGScanner/icons/trash-2.svg"
+                            visible: channelDelegate.highlighted
+                            onClicked: {
+                                channelModel.remove(index);
+                                if (channelModel.count === 0) {
+                                    root.addChannelClicked()
+                                }
                             }
                         }
                     }
@@ -81,30 +97,19 @@ Drawer {
             }
         }
 
-        // Add Channel
-        // Button {
-        //     Layout.fillWidth: true
-        //     Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
-
-        //     Material.roundedScale: Material.SmallScale 
-
-        //     text: "Add Channel"
-        //     highlighted: true
-
-        //     onClicked: root.addChannelClicked()
-        // }
-
         // Add channel button
-        Pane {
+        Button {
             Layout.fillWidth: true
-            padding: 12
-            Button {
-                text: "Add Channel"
-                flat: true
-                width: parent.width
-                icon.name: "add"
-                onClicked: console.log("Add channel (demo)")
-            }
+            Layout.margins: 12
+            Layout.preferredHeight: 60
+            Layout.alignment: Qt.AlignBottom | Qt.AlignHCenter
+            Material.roundedScale: Material.SmallScale 
+
+            flat: true
+            highlighted: true
+            text: "Add Channel"
+            icon.source: "qrc:/qt/qml/MTGScanner/icons/plus.svg"
+            onClicked: root.addChannelClicked()
         }
     }
 }

@@ -42,31 +42,21 @@ Page {
         anchors.rightMargin: 20
         anchors.topMargin: 16
         anchors.bottomMargin: 16
-        spacing: 16
+        spacing: 12
         visible: page.channelOps.isValid()
 
         // Configuration Header
-        Rectangle {
-            color: MTGScanner.surfaceColor
-            radius: 12
+        HeaderSection {
             Layout.fillWidth: true
             Layout.preferredHeight: 50
 
-            RowLayout {
-                anchors.fill: parent
-                spacing: 10
+            padding: 10
+            leftPadding: 20
+            rightPadding: 20
+            Material.elevation: 2
 
-                Text {
-                    text: page.channelOps.name + " - Configuration"
-                    font.pixelSize: 18
-                    font.weight: Font.Medium
-                    color: MTGScanner.surfaceTextColor
-                    horizontalAlignment: Text.AlignHCenter
-
-                    Layout.leftMargin: 10
-                    Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
-                }
-            }
+            channelName: page.channelOps.name
+            channelRunning: false
         }
 
         // Live Preview Section
@@ -107,75 +97,14 @@ Page {
         }
 
         // Status Section
-        Rectangle {
-            radius: 12
-            color: MTGScanner.surfaceColor
+        StatusSection {
             Layout.fillWidth: true
             Layout.preferredHeight: 50
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: 10
-                spacing: 8
-
-                // Status Indicator
-                Rectangle {
-                    width: 12
-                    height: 12
-                    color: "green"
-                    radius: 6
-                }
-
-                Text {
-                    text: "Status:"
-                    font.pixelSize: 14
-                    color: MTGScanner.placeholderTextColor
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                Text {
-                    text: "Connected"
-                    color: "green"
-                    font.pixelSize: 14
-                    font.weight: Font.Medium
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                Rectangle {
-                    width: 1
-                    height: 20
-                    color: MTGScanner.placeholderTextColor
-                    opacity: 0.3
-                    Layout.alignment: Qt.AlignVCenter
-                }
-                
-                Text {
-                    text: "FPS: 30"
-                    font.pixelSize: 14
-                    color: MTGScanner.placeholderTextColor
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                Rectangle {
-                    width: 1
-                    height: 20
-                    color: MTGScanner.placeholderTextColor
-                    opacity: 0.3
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                Text {
-                    text: "Cards Visible: 4"
-                    color: MTGScanner.placeholderTextColor
-                    font.pixelSize: 14
-                    Layout.alignment: Qt.AlignVCenter
-                }
-
-                // Spacer
-                Item {
-                    Layout.fillWidth: true
-                }
-            }
+            padding: 10
+            leftPadding: 20
+            rightPadding: 20
+            Material.elevation: 2
         }
     }
 }

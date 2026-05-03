@@ -15,17 +15,14 @@ ApplicationWindow {
     MTGScanner.theme: MTGScanner.Dark
     color: MTGScanner.backgroundColor
 
-    property bool showDrawer: width > 1250
+    property bool showDrawer: true
 
     header: ToolBar {
         RowLayout {
             anchors.fill: parent
+            anchors.leftMargin: 20
+            anchors.rightMargin: 20
             spacing: 8
-
-            ToolButton {
-                icon.name: "menu"
-                onClicked: sidebar.open()
-            }
 
             Label {
                 Layout.fillWidth: true
@@ -36,12 +33,10 @@ ApplicationWindow {
             }
 
             ToolButton {
-                icon.name: "play_arrow"
+                Layout.fillHeight: true
+
+                icon.source: "qrc:/qt/qml/MTGScanner/icons/" + (false ? "pause.svg" : "play.svg")
                 onClicked: console.log("Start All")
-            }
-            ToolButton {
-                icon.name: "stop"
-                onClicked: console.log("Stop All")
             }
         }
     }

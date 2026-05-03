@@ -20,6 +20,16 @@ namespace MTGS {
 class EngineWorker : public QObject {
     Q_OBJECT
 public:
+    enum ChannelStatus {
+        Initializing,
+        Starting,
+        Running,
+        Stopping,
+        Stopped,
+        Errored,
+        Uknown
+    };
+
     EngineWorker(tbb::concurrent_unordered_map<QString, ChannelInfo> &channels, QObject *parent = nullptr);
     virtual ~EngineWorker();
 

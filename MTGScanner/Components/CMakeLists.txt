@@ -7,15 +7,11 @@ qt_add_qml_module(${PROJECT_NAME}Components
         ActiveFiltersCard.qml
         CameraPreviewCard.qml
         CameraSourceCard.qml
+        HeaderSection.qml
         OutputWindowCard.qml
         ChannelWizard.qml
         SideBar.qml
-
-    RESOURCES
-        icons/configuration.svg
-        icons/dashboard.svg
-        icons/menu.svg
-        icons/outputwindows.svg
+        StatusSection.qml
 )
 
 # For the MTGScanner propagator to work.

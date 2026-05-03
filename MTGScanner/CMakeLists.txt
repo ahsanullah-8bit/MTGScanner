@@ -8,6 +8,17 @@ qt_add_qml_module(${PROJECT_NAME}
         channeloptions.hpp
         mtgscanner.h
         mtgscanner.cpp
+    RESOURCES
+        icons/app-window.svg
+        icons/check.svg
+        icons/check.svg
+        icons/funnel-plus.svg
+        icons/menu.svg
+        icons/pause.svg
+        icons/play.svg
+        icons/plus.svg
+        icons/square.svg
+        icons/trash-2.svg
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC Qt6::QuickControls2 Qt6::Multimedia)

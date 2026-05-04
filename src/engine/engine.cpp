@@ -227,6 +227,8 @@ void EngineWorker::deleteChannel(const ChannelOptions &options)
     tf::remove_edge(*info.preLimiter, *m_processor);
     tf::remove_edge(*info.postSequencer, *m_uiNotifier);
 
+    m_channels.at(options.id).outVideoSink = nullptr;
+
     // Delete
     // TODO: Make sure everything dies before release.
     m_channels.unsafe_erase(options.id);
@@ -294,8 +296,7 @@ void Engine::receiveFrameNotification(const FramePtr& frame)
     if (!m_channels.contains(frame->channelId)) {
         qCDebug(engine_logger) << QString("Stranded frame %1 from channel %2").arg(frame->sequenceId).arg(frame->channelId);
         return;
-    }    void channelAdded(const ChannelOptions &channelOptions);
-
+    }
 
     auto videoSink = m_channels[frame->channelId].outVideoSink;
     if (videoSink)

@@ -22,7 +22,7 @@ namespace tf = tbb::flow;
 
 Q_STATIC_LOGGING_CATEGORY(worker_logger, "mtgs.engine.worker")
 
-EngineWorker::EngineWorker(tbb::concurrent_unordered_map<QString, ChannelInfo> &channels, QObject *parent)
+EngineWorker::EngineWorker(tbb::concurrent_unordered_map<QString, QSharedPointer<ChannelInfo>> &channels, QObject *parent)
     : QObject(parent), m_channels(channels) 
 {}
 
@@ -30,8 +30,8 @@ EngineWorker::~EngineWorker()
 {
     // Close all cameras
     for (auto &[_, channel] : m_channels) {
-        channel.capture.thread->quit();
-        channel.capture.thread->wait();
+        channel->capture.thread->quit();
+        channel->capture.thread->wait();
     }
     // Close the graph
     m_graph.wait_for_all();
@@ -47,10 +47,10 @@ void EngineWorker::init()
 
         if (frame->timestamp.msecsTo(QTime::currentTime()) > 100) {
             qCWarning(worker_logger) << QString("Channel %1 frame at %2 expired")
-                .arg(m_channels.at(frame->channelId).channelOptions.name)
+                .arg(m_channels.at(frame->channelId)->channelOptions.name)
                 .arg(frame->originalFrame.startTime());
 
-                m_channels.at(frame->channelId).skippedFramesCount++;
+                m_channels.at(frame->channelId)->skippedFramesCount++;
                 std::get<1>(ports).try_put(tf::continue_msg());
                 return;
         }
@@ -68,8 +68,8 @@ void EngineWorker::init()
         // TODO: Maybe check for frame expiration here as well.
 
         auto &channel = m_channels.at(frame->channelId);
-        channel.postSequencer->try_put(frame);
-        channel.preLimiter->decrementer().try_put(tf::continue_msg());
+        channel->postSequencer->try_put(frame);
+        channel->preLimiter->decrementer().try_put(tf::continue_msg());
         std::get<0>(ports).try_put(tf::continue_msg());
     };
 
@@ -100,7 +100,7 @@ void EngineWorker::saveToSettings()
 
     size_t i = 0;
     for (auto it = m_channels.cbegin(); it != m_channels.cend(); ++it) {
-        const auto& options = it->second.channelOptions;
+        const auto& options = it->second->channelOptions;
         settings.setArrayIndex(i++);
         settings.setValue("id", options.id);
         settings.setValue("name", options.name);
@@ -185,27 +185,27 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
     auto async_src_body = [] (const tf::continue_msg &, tf::async_node<tf::continue_msg, FramePtr>::gateway_type& gateway) {};
     auto sequencer_body = [] (const FramePtr &f) { return f->sequenceId; };
 
-    ChannelInfo channel;
-    channel.asyncSrc = QSharedPointer<tf::async_node<tf::continue_msg, FramePtr>>::create(m_graph, tf::unlimited, async_src_body);
-    channel.preLimiter = QSharedPointer<tf::limiter_node<FramePtr>>::create(m_graph, maxInFlight);
-    channel.postSequencer = QSharedPointer<tf::sequencer_node<FramePtr>>::create(m_graph, sequencer_body);
-    channel.outVideoSink = videoSink;
-    channel.channelOptions = channelOptions;
+    QSharedPointer<ChannelInfo> channel = QSharedPointer<ChannelInfo>::create();
+    channel->asyncSrc = QSharedPointer<tf::async_node<tf::continue_msg, FramePtr>>::create(m_graph, tf::unlimited, async_src_body);
+    channel->preLimiter = QSharedPointer<tf::limiter_node<FramePtr>>::create(m_graph, maxInFlight);
+    channel->postSequencer = QSharedPointer<tf::sequencer_node<FramePtr>>::create(m_graph, sequencer_body);
+    channel->outVideoSink = videoSink;
+    channel->channelOptions = channelOptions;
 
-    tf::make_edge(*channel.asyncSrc, *channel.preLimiter);
-    tf::make_edge(*channel.preLimiter, *m_processor);
-    tf::make_edge(*channel.postSequencer, *m_uiNotifier);
+    tf::make_edge(*channel->asyncSrc, *channel->preLimiter);
+    tf::make_edge(*channel->preLimiter, *m_processor);
+    tf::make_edge(*channel->postSequencer, *m_uiNotifier);
 
     auto thread = new QThread();
-    auto worker = new CameraCapture(channelOptions.id, channelOptions.cameraDevice, channel.asyncSrc->gateway());
+    auto worker = new CameraCapture(channelOptions.id, channelOptions.cameraDevice, channel->asyncSrc->gateway());
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &CameraCapture::init);
     connect(thread, &QThread::finished, worker, &QObject::deleteLater);
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
     connect(worker, &CameraCapture::errorOccurred, [](QCamera::Error error, const QString &errorStr) { qCritical() << error << errorStr; } );
     
-    channel.capture = { thread, worker };
-    channel.capture.thread->start();
+    channel->capture = { thread, worker };
+    channel->capture.thread->start();
 
     m_channels.emplace(channelOptions.id, channel);
 
@@ -218,16 +218,16 @@ void EngineWorker::deleteChannel(const ChannelOptions &options)
 {
     // Stop capture
     auto &info = m_channels.at(options.id);
-    QMetaObject::invokeMethod(info.capture.worker, "stop");
-    info.capture.thread->quit();
-    info.capture.thread->wait(); // TODO: Maybe add a timeout and then force quit.
+    QMetaObject::invokeMethod(info->capture.worker, "stop");
+    info->capture.thread->quit();
+    info->capture.thread->wait(); // TODO: Maybe add a timeout and then force quit.
 
     // Disconnect
-    tf::remove_edge(*info.asyncSrc, *info.preLimiter);
-    tf::remove_edge(*info.preLimiter, *m_processor);
-    tf::remove_edge(*info.postSequencer, *m_uiNotifier);
+    tf::remove_edge(*info->asyncSrc, *info->preLimiter);
+    tf::remove_edge(*info->preLimiter, *m_processor);
+    tf::remove_edge(*info->postSequencer, *m_uiNotifier);
 
-    m_channels.at(options.id).outVideoSink = nullptr;
+    m_channels.at(options.id)->outVideoSink = nullptr;
 
     // Delete
     // TODO: Make sure everything dies before release.
@@ -288,7 +288,7 @@ ChannelOptions Engine::createChannelOptions() const {
 
 ChannelOptions Engine::channelOptions(const QString &channelId) const
 {
-    return m_channels.at(channelId).channelOptions;
+    return m_channels.at(channelId)->channelOptions;
 }
 
 void Engine::receiveFrameNotification(const FramePtr& frame) 
@@ -298,7 +298,7 @@ void Engine::receiveFrameNotification(const FramePtr& frame)
         return;
     }
 
-    auto videoSink = m_channels[frame->channelId].outVideoSink;
+    auto videoSink = m_channels.at(frame->channelId)->outVideoSink;
     if (videoSink)
         videoSink->setVideoFrame(frame->originalFrame);
 }
@@ -334,7 +334,7 @@ void Engine::registerChannelOutSink(const QString &channelId, QVideoSink *videoS
         return;
     }
 
-    m_channels.at(channelId).outVideoSink = videoSink;
+    m_channels.at(channelId)->outVideoSink = videoSink;
 }
 
 void Engine::setEngineLoaded(bool loaded) 

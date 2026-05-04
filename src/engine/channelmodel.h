@@ -13,10 +13,10 @@ class ChannelModel : public QAbstractListModel {
     Q_OBJECT
 public:
     enum CameraRoles {
-        ChannelIdRole = Qt::UserRole + 1,
-        ChannelNameRole,
-        ChannelOnlineStatus,
-        CameraDeviceRole,
+        IdRole = Qt::UserRole + 1,
+        NameRole,
+        StatusRole,
+        DeviceRole,
     };
 
     explicit ChannelModel(tbb::concurrent_unordered_map<QString, QSharedPointer<ChannelInfo>> &channel, QObject *parent = nullptr);

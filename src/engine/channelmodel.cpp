@@ -22,13 +22,13 @@ QVariant ChannelModel::data(const QModelIndex &index, int role) const
     const auto &channelInfo = it->second;
     
     switch (role) {
-        case ChannelIdRole:
+        case IdRole:
             return it->first;
-        case ChannelNameRole:
+        case NameRole:
             return channelInfo->channelOptions.name;
-        case ChannelOnlineStatus:
-            return channelInfo->isValid;
-        case CameraDeviceRole:
+        case StatusRole:
+            return channelInfo->channelStatus.loadRelaxed();
+        case DeviceRole:
             return QVariant::fromValue(channelInfo->channelOptions.cameraDevice);
         default:
             return QVariant();
@@ -38,10 +38,10 @@ QVariant ChannelModel::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> ChannelModel::roleNames() const
 {
     static QHash<int, QByteArray> roles {
-        {ChannelIdRole, "channelId"},
-        {ChannelNameRole, "channelName"},
-        {ChannelOnlineStatus, "online"},
-        {CameraDeviceRole, "device"}
+        {IdRole, "id"},
+        {NameRole, "name"},
+        {StatusRole, "status"},
+        {DeviceRole, "device"}
     };
 
     return roles;

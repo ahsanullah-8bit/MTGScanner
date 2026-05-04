@@ -67,7 +67,9 @@ void EngineWorker::init()
 
         // TODO: Maybe check for frame expiration here as well.
 
-        m_channels.at(frame->channelId).postSequencer->try_put(frame);
+        auto &channel = m_channels.at(frame->channelId);
+        channel.postSequencer->try_put(frame);
+        channel.preLimiter->decrementer().try_put(tf::continue_msg());
         std::get<0>(ports).try_put(tf::continue_msg());
     };
 
@@ -82,7 +84,7 @@ void EngineWorker::init()
     m_frameDistributor = QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<tf::continue_msg>>>::create(m_graph, tf::unlimited, frame_distributor_body);
     m_uiNotifier = QSharedPointer<tf::function_node<FramePtr>>::create(m_graph, tf::serial, ui_notifier_body);
 
-    tf::make_edge(*m_processor, *m_frameDistributor);
+    tf::make_edge(tf::output_port<0>(*m_processor), *m_frameDistributor);
 
     // Load the channel settings
     loadFromSettings();
@@ -192,7 +194,6 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
 
     tf::make_edge(*channel.asyncSrc, *channel.preLimiter);
     tf::make_edge(*channel.preLimiter, *m_processor);
-    tf::make_edge(tf::output_port<1>(*m_processor), channel.preLimiter->decrementer());
     tf::make_edge(*channel.postSequencer, *m_uiNotifier);
 
     auto thread = new QThread();
@@ -224,7 +225,6 @@ void EngineWorker::deleteChannel(const ChannelOptions &options)
     // Disconnect
     tf::remove_edge(*info.asyncSrc, *info.preLimiter);
     tf::remove_edge(*info.preLimiter, *m_processor);
-    tf::remove_edge(tf::output_port<1>(*m_processor), info.preLimiter->decrementer());
     tf::remove_edge(*info.postSequencer, *m_uiNotifier);
 
     // Delete

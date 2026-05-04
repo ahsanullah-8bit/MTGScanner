@@ -25,6 +25,8 @@ public:
 
 public slots:
     void init();
+    void start();
+    void stop();
 
 signals:
     void errorOccurred(QCamera::Error error, const QString &errorString);

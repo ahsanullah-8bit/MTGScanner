@@ -47,15 +47,17 @@ QHash<int, QByteArray> ChannelModel::roleNames() const
     return roles;
 }
 
-void ChannelModel::channelAdded(const ChannelOptions &cameraDevice)
+void ChannelModel::channelAdded(const ChannelOptions &options)
 {
+    Q_UNUSED(options)
     beginResetModel();
     // ...
     endResetModel();
 }
 
-void ChannelModel::channelRemoved(const ChannelOptions &cameraDevice)
+void ChannelModel::channelDeleted(const ChannelOptions &options)
 {
+    Q_UNUSED(options)
     beginResetModel();
     // ...
     endResetModel();

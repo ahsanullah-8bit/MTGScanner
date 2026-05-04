@@ -83,4 +83,31 @@ ApplicationWindow {
             onClosed: channelWizardLoader.active = false
         }
     }
+
+    // Delete Channel Dialog
+    Dialog {
+        id: deleteDialog
+
+        property channelOptions channelOptions
+
+        anchors.centerIn: parent
+
+        title: "Confirm Deletion"
+        modal: true
+        standardButtons: Dialog.Yes | Dialog.No
+        onAccepted: Engine.deleteChannel(channelOptions)
+
+        Label {
+            text: "Are you sure, you want to delete the channel?"
+        }
+    }
+
+    Connections {
+        target: sidebar
+
+        function onDeleteChannelClicked(options) {
+            deleteDialog.channelOptions = options
+            deleteDialog.open()
+        }
+    }
 }

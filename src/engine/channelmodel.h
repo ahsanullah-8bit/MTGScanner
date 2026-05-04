@@ -28,8 +28,8 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
 public slots:
-    void channelAdded(const ChannelOptions &cameraDevice);
-    void channelRemoved(const ChannelOptions &cameraDevice);
+    void channelAdded(const ChannelOptions &options);
+    void channelDeleted(const ChannelOptions &options);
 
 private:
     tbb::concurrent_unordered_map<QString, ChannelInfo> &m_channel;

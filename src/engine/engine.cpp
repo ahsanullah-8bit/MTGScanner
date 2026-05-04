@@ -213,6 +213,27 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
     emit channelAdded(channelOptions);
 }
 
+void EngineWorker::deleteChannel(const ChannelOptions &options)
+{
+    // Stop capture
+    auto &info = m_channels.at(options.id);
+    QMetaObject::invokeMethod(info.capture.worker, "stop");
+    info.capture.thread->quit();
+    info.capture.thread->wait(); // TODO: Maybe add a timeout and then force quit.
+
+    // Disconnect
+    tf::remove_edge(*info.asyncSrc, *info.preLimiter);
+    tf::remove_edge(*info.preLimiter, *m_processor);
+    tf::remove_edge(tf::output_port<1>(*m_processor), info.preLimiter->decrementer());
+    tf::remove_edge(*info.postSequencer, *m_uiNotifier);
+
+    // Delete
+    // TODO: Make sure everything dies before release.
+    m_channels.unsafe_erase(options.id);
+
+    emit channelDeleted(options);
+}
+
 // ------------------ Engine Implementation ------------------
 Q_STATIC_LOGGING_CATEGORY(engine_logger, "mtgs.engine")
 Engine::Engine() 
@@ -227,6 +248,7 @@ Engine::Engine()
     connect(worker, &EngineWorker::engineLoaded, this, &Engine::setEngineLoaded);
     connect(worker, &EngineWorker::sendFrameToMainThread, this, &Engine::receiveFrameNotification);
     connect(worker, &EngineWorker::channelAdded, this, &Engine::channelAdded);
+    connect(worker, &EngineWorker::channelDeleted, this, &Engine::channelDeleted);
 
     m_engine.worker = worker;
     m_engine.thread = thread;
@@ -243,6 +265,7 @@ QSharedPointer<ChannelModel> Engine::createSharedChannelModel()
 {
     QSharedPointer<ChannelModel> model = QSharedPointer<ChannelModel>::create(m_channels, this);
     connect(m_engine.worker, &EngineWorker::channelAdded, model.data(), &ChannelModel::channelAdded);
+    connect(m_engine.worker, &EngineWorker::channelDeleted, model.data(), &ChannelModel::channelDeleted);
 
     return model;
 }
@@ -279,16 +302,6 @@ void Engine::receiveFrameNotification(const FramePtr& frame)
         videoSink->setVideoFrame(frame->originalFrame);
 }
 
-void Engine::registerChannelOutSink(const QString &channelId, QVideoSink *videoSink) 
-{
-    if (!m_channels.contains(channelId)) {
-        qCDebug(engine_logger) << QString("Trying to register videosink for unknown channel %1").arg(channelId);
-        return;
-    }
-
-    m_channels.at(channelId).outVideoSink = videoSink;
-}
-
 void Engine::addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink, int maxInFlight, QScreen *screen)
 {
     if (m_engine.thread && m_engine.worker) {
@@ -301,6 +314,26 @@ void Engine::addChannel(const ChannelOptions &channelOptions, QVideoSink *videoS
     } else {
         qCCritical(engine_logger) << "Worker thread not initialized yet. Cannot add channel" << channelOptions.name;
     }
+}
+
+void Engine::deleteChannel(const ChannelOptions &options)
+{
+    if (!m_channels.contains(options.id)) {
+        qCCritical(worker_logger) << QString("Trying to delete a non existent channel using id %1.").arg(options.id);
+        return;
+    }
+
+    QMetaObject::invokeMethod(m_engine.worker, "deleteChannel", Q_ARG(ChannelOptions, options));
+}
+
+void Engine::registerChannelOutSink(const QString &channelId, QVideoSink *videoSink)
+{
+    if (!m_channels.contains(channelId)) {
+        qCDebug(engine_logger) << QString("Trying to register videosink for unknown channel %1").arg(channelId);
+        return;
+    }
+
+    m_channels.at(channelId).outVideoSink = videoSink;
 }
 
 void Engine::setEngineLoaded(bool loaded) 

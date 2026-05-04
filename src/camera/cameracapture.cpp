@@ -49,6 +49,16 @@ void CameraCapture::init()
     m_camera->start();
 }
 
+void CameraCapture::start()
+{
+    m_camera->start();
+}
+
+void CameraCapture::stop()
+{
+    m_camera->stop();
+}
+
 }
 
 #include "moc_cameracapture.cpp"

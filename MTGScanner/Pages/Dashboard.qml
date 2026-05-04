@@ -31,7 +31,7 @@ Page {
         font.pixelSize: 16
         font.bold: true
         color: Material.hintTextColor
-        visible: !page.channelOps.isValid()
+        visible: !page.channelOps || !page.channelOps.isValid()
 
         anchors.centerIn: parent
     }
@@ -43,7 +43,7 @@ Page {
         anchors.topMargin: 16
         anchors.bottomMargin: 16
         spacing: 12
-        visible: page.channelOps.isValid()
+        visible: page.channelOps && page.channelOps.isValid()
 
         // Configuration Header
         HeaderSection {

@@ -30,6 +30,7 @@ public slots:
 
 signals:
     void errorOccurred(QCamera::Error error, const QString &errorString);
+    void activeChanged(bool);
 
 private:
     QString m_channelId;

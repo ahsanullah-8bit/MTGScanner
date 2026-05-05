@@ -214,14 +214,28 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
     connect(thread, &QThread::started, worker, &CameraCapture::init);
     connect(thread, &QThread::finished, worker, &QObject::deleteLater);
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
-    connect(worker, &CameraCapture::errorOccurred, [](QCamera::Error error, const QString &errorStr) { qCritical() << error << errorStr; } );
+    connect(worker, &CameraCapture::errorOccurred,
+        [channel = channel, wl = worker_logger](QCamera::Error error, const QString &errorStr) {
+            channel->metrics->setStatus(Engine::Errored);
+            qCCritical(wl) << error << errorStr;
+        }
+    );
+    connect(worker, &CameraCapture::activeChanged,
+        [channel = channel, wl = worker_logger](bool active) {
+            channel->metrics->setStatus(active ? Engine::Running : Engine::Stopped);
+            qCDebug(wl) << "Channel" << static_cast<Engine::ChannelStatus>(channel->metrics->status());
+        }
+    );
     
     channel->capture = { thread, worker };
     channel->capture.thread->start();
-
-    channel->metrics->setStatus(Engine::Running);
     channel->fps.start();
     channel->skippedFps.start();
+
+    if (channel->metrics->status() != Engine::Stopped) { // Then it's probably Unknown
+        channel->metrics->setStatus(Engine::Starting);
+        QMetaObject::invokeMethod(channel->capture.worker, "start");
+    }
 
     m_channels.emplace(channelOptions.id, channel);
 
@@ -234,15 +248,10 @@ void EngineWorker::deleteChannel(const ChannelOptions &options)
 {
     auto &info = m_channels.at(options.id);
 
-    // Signal channel-stopped to the m_channel readers.
-    info->metrics->setStatus(Engine::Stopping);
-
     // Stop capture
     QMetaObject::invokeMethod(info->capture.worker, "stop");
     info->capture.thread->quit();
     info->capture.thread->wait(); // TODO: Maybe add a timeout and then force quit.
-
-    info->metrics->setStatus(Engine::Stopped);
 
     // Disconnect
     tf::remove_edge(*info->asyncSrc, *info->preLimiter);
@@ -250,7 +259,7 @@ void EngineWorker::deleteChannel(const ChannelOptions &options)
     tf::remove_edge(*info->postSequencer, *m_uiNotifier);
 
     info->outVideoSink = nullptr;
-    info->metrics->setStatus(Engine::Uknown);
+    info->metrics->setStatus(Engine::Unknown);
 
     // Delete
     // TODO: Make sure everything dies before release.
@@ -259,9 +268,28 @@ void EngineWorker::deleteChannel(const ChannelOptions &options)
     emit channelDeleted(options);
 }
 
+void EngineWorker::startChannel(const QString &channelId)
+{
+    if (m_channels.at(channelId)->metrics->status() <= Engine::Stopping)
+        return;
+
+    m_channels.at(channelId)->capture.worker->start();
+    emit channelStarted();
+}
+
+void EngineWorker::stopChannel(const QString &channelId)
+{
+    if (m_channels.at(channelId)->metrics->status() >= Engine::Stopped)
+        return;
+
+    m_channels.at(channelId)->capture.worker->stop();
+    emit channelStopped();
+}
+
 // ------------------ Engine Implementation ------------------
 Q_STATIC_LOGGING_CATEGORY(engine_logger, "mtgs.engine")
-Engine::Engine() 
+Engine::Engine(QObject *parent)
+    : QObject(parent)
 {
     auto thread = new QThread();
     auto worker = new EngineWorker(m_channels);
@@ -360,6 +388,26 @@ void Engine::deleteChannel(const ChannelOptions &options)
     }
 
     QMetaObject::invokeMethod(m_engine.worker, "deleteChannel", Q_ARG(ChannelOptions, options));
+}
+
+void Engine::startChannel(const QString &channelId)
+{
+    if (!m_channels.contains(channelId)) {
+        qCCritical(worker_logger) << QString("Trying to start a non existent channel using id %1.").arg(channelId);
+        return;
+    }
+
+    QMetaObject::invokeMethod(m_engine.worker, "startChannel", Q_ARG(QString, channelId));
+}
+
+void Engine::stopChannel(const QString &channelId)
+{
+    if (!m_channels.contains(channelId)) {
+        qCCritical(worker_logger) << QString("Trying to stop a non existent channel using id %1.").arg(channelId);
+        return;
+    }
+
+    QMetaObject::invokeMethod(m_engine.worker, "stopChannel", Q_ARG(QString, channelId));
 }
 
 void Engine::registerChannelOutSink(const QString &channelId, QVideoSink *videoSink)

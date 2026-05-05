@@ -36,7 +36,7 @@ signals:
     void visibleCardsChanged(int);
 
 private:
-    QAtomicInt m_status;
+    QAtomicInt m_status = 0; // Which should be Unknown/Non-valid state.
     QAtomicInt m_fps;
     QAtomicInt m_skippedFps;
     QAtomicInt m_visibleCards;

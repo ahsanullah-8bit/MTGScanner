@@ -30,11 +30,15 @@ public slots:
     void loadFromSettings();
     void addChannel(const MTGS::ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16, QScreen *screen = nullptr);
     void deleteChannel(const MTGS::ChannelOptions &options);
+    void startChannel(const QString &channelId);
+    void stopChannel(const QString &channelId);
 
 signals:
     void engineLoaded(bool loaded = true);
     void channelAdded(const MTGS::ChannelOptions &channelOptions);
     void channelDeleted(const MTGS::ChannelOptions &options);
+    void channelStarted(bool started = true);
+    void channelStopped(bool stopped = true);
     void sendFrameToMainThread(const MTGS::FramePtr& frame);
 
 private:
@@ -51,17 +55,17 @@ class Engine : public QObject {
     Q_PROPERTY(bool engineLoaded READ isEngineLoaded WRITE setEngineLoaded NOTIFY engineLoaded FINAL)
 public:
     enum ChannelStatus {
+        Unknown,
         Initializing,
         Starting,
         Running,
         Stopping,
         Stopped,
-        Errored,
-        Uknown
+        Errored
     };
     Q_ENUM(ChannelStatus)
 
-    Engine();
+    Engine(QObject *parent = nullptr);
     ~Engine();
     QSharedPointer<ChannelModel> createSharedChannelModel();
     bool isEngineLoaded() const;
@@ -74,12 +78,16 @@ public slots:
     void receiveFrameNotification(const MTGS::FramePtr& frame);
     void addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16, QScreen *screen = nullptr);
     void deleteChannel(const MTGS::ChannelOptions &options);
+    void startChannel(const QString &channelId);
+    void stopChannel(const QString &channelId);
     void registerChannelOutSink(const QString &channelId, QVideoSink *videoSink);
 
 signals:
     void engineLoaded(bool loaded = true);
     void channelAdded(const MTGS::ChannelOptions &channelOptions);
     void channelDeleted(const MTGS::ChannelOptions &options);
+    void channelStarted(bool started = true);
+    void channelStopped(bool stopped = true);
 
 private:
     void setEngineLoaded(bool loaded);

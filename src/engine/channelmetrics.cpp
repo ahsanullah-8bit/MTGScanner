@@ -15,6 +15,7 @@ QColor ChannelMetrics::statusColor() const
 {
     static QList<QColor> status_colors = 
     {
+        "red",       // "Uknown"
         "#95a5a6", // "Initializing"
         "#f1c40f", // "Starting"
         "#2ecc71", // "Running"

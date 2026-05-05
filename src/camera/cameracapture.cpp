@@ -45,8 +45,7 @@ void CameraCapture::init()
         m_gateway.try_put(f);
     });
     connect(m_camera, &QCamera::errorOccurred, this, &CameraCapture::errorOccurred);
-
-    m_camera->start();
+    connect(m_camera, &QCamera::activeChanged, this, &CameraCapture::activeChanged);
 }
 
 void CameraCapture::start()

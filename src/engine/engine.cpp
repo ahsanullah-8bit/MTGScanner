@@ -46,11 +46,12 @@ void EngineWorker::init()
         // Process the image. For now, we just pass it through.
 
         if (frame->timestamp.msecsTo(QTime::currentTime()) > 100) {
+            auto &info = m_channels.at(frame->channelId);
             qCWarning(worker_logger) << QString("Channel %1 frame at %2 expired")
-                .arg(m_channels.at(frame->channelId)->channelOptions.name)
+                .arg(info->channelOptions.name)
                 .arg(frame->originalFrame.startTime());
 
-                m_channels.at(frame->channelId)->skippedFramesCount++;
+                info->skippedFrames++;
                 std::get<1>(ports).try_put(tf::continue_msg());
                 return;
         }
@@ -191,6 +192,7 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
     channel->postSequencer = QSharedPointer<tf::sequencer_node<FramePtr>>::create(m_graph, sequencer_body);
     channel->outVideoSink = videoSink;
     channel->channelOptions = channelOptions;
+    channel->metrics = QSharedPointer<ChannelMetrics>::create();
 
     tf::make_edge(*channel->asyncSrc, *channel->preLimiter);
     tf::make_edge(*channel->preLimiter, *m_processor);
@@ -206,6 +208,7 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
     
     channel->capture = { thread, worker };
     channel->capture.thread->start();
+    channel->metrics->setStatus(Engine::Running);
 
     m_channels.emplace(channelOptions.id, channel);
 
@@ -216,18 +219,25 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
 
 void EngineWorker::deleteChannel(const ChannelOptions &options)
 {
-    // Stop capture
     auto &info = m_channels.at(options.id);
+
+    // Signal channel-stopped to the m_channel readers.
+    info->metrics->setStatus(Engine::Stopping);
+
+    // Stop capture
     QMetaObject::invokeMethod(info->capture.worker, "stop");
     info->capture.thread->quit();
     info->capture.thread->wait(); // TODO: Maybe add a timeout and then force quit.
+
+    info->metrics->setStatus(Engine::Stopped);
 
     // Disconnect
     tf::remove_edge(*info->asyncSrc, *info->preLimiter);
     tf::remove_edge(*info->preLimiter, *m_processor);
     tf::remove_edge(*info->postSequencer, *m_uiNotifier);
 
-    m_channels.at(options.id)->outVideoSink = nullptr;
+    info->outVideoSink = nullptr;
+    info->metrics->setStatus(Engine::Uknown);
 
     // Delete
     // TODO: Make sure everything dies before release.

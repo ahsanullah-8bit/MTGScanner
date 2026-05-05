@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstddef>
 #include <tbb_patched.hpp>
 
 #include <QPair>
@@ -10,6 +9,7 @@
 #include <QAtomicInteger>
 
 #include <core/frame.hpp>
+#include <engine/channelmetrics.h>
 #include <channeloptions.hpp>
 
 namespace MTGS {
@@ -23,10 +23,12 @@ struct ChannelInfo {
     QSharedPointer<tf::async_node<tf::continue_msg, FramePtr>> asyncSrc;
     QSharedPointer<tf::limiter_node<FramePtr>> preLimiter;
     QSharedPointer<tf::sequencer_node<FramePtr>> postSequencer;
-    size_t skippedFramesCount = 0;
 
-    QAtomicInt channelStatus;
     ChannelOptions channelOptions;
+    QSharedPointer<ChannelMetrics> metrics;
+
+    // This helps in sequencing.
+    QAtomicInt skippedFrames = 0;
 };
 
 } // namespace MTGS

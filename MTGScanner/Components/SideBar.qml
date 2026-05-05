@@ -56,13 +56,13 @@ Drawer {
                             Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
 
                             width: 12; height: 12; radius: 6
-                            color: model.online ? Material.accent
+                            color: model.status === Engine.Running ? Material.accent
                                                     : Material.color(Material.Grey, Material.Shade400)
                         }
                         Label {
                             Layout.alignment: Qt.AlignVCenter
 
-                            text: model.channelName
+                            text: model.name
                             font: channelDelegate.font
                         }
                         Item { Layout.fillHeight: true; Layout.fillWidth: true } // spacer
@@ -74,13 +74,13 @@ Drawer {
                             icon.source: "qrc:/qt/qml/MTGScanner/icons/trash-2.svg"
                             opacity: 0.6
                             visible: channelDelegate.hovered
-                            onClicked: root.deleteChannelClicked(Engine.channelOptions(model.channelId))
+                            onClicked: root.deleteChannelClicked(Engine.channelOptions(model.id))
                         }
                     }
                 }
 
                 onClicked: {
-                    root.currentChannelOptions = Engine.channelOptions(model.channelId)
+                    root.currentChannelOptions = Engine.channelOptions(model.id)
                     channelList.currentIndex = index
                 }
 
@@ -89,7 +89,7 @@ Drawer {
                         return
 
                     // THIS SHOULD ONLY HAPPEN, IF THERE'S NO CHANNEL AT ALL.
-                    root.currentChannelOptions = Engine.channelOptions(model.channelId)
+                    root.currentChannelOptions = Engine.channelOptions(model.id)
                     channelList.currentIndex = index
                 }
 

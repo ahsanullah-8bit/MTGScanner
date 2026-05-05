@@ -27,7 +27,7 @@ QVariant ChannelModel::data(const QModelIndex &index, int role) const
         case NameRole:
             return channelInfo->channelOptions.name;
         case StatusRole:
-            return channelInfo->channelStatus.loadRelaxed();
+            return channelInfo->metrics->status();
         case DeviceRole:
             return QVariant::fromValue(channelInfo->channelOptions.cameraDevice);
         default:

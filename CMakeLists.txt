@@ -18,9 +18,13 @@ qt_add_executable(${PROJECT_NAME}App
     src/core/frame.hpp
     src/core/prediction.hpp
     src/engine/channelinfo.hpp
+    src/engine/channelmetrics.h
+    src/engine/channelmetrics.cpp
+    src/engine/channelmodel.h
     src/engine/channelmodel.cpp
     src/engine/engine.h
     src/engine/engine.cpp
+    src/engine/framespersecond.hpp
 )
 
 qt_add_resources(${CMAKE_PROJECT_NAME}App "configuration"

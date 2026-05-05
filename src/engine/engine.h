@@ -72,9 +72,9 @@ public:
 
 public slots:
     void receiveFrameNotification(const MTGS::FramePtr& frame);
-    Q_INVOKABLE void addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16, QScreen *screen = nullptr);
-    Q_INVOKABLE void deleteChannel(const MTGS::ChannelOptions &options);
-    Q_INVOKABLE void registerChannelOutSink(const QString &channelId, QVideoSink *videoSink);
+    void addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16, QScreen *screen = nullptr);
+    void deleteChannel(const MTGS::ChannelOptions &options);
+    void registerChannelOutSink(const QString &channelId, QVideoSink *videoSink);
 
 signals:
     void engineLoaded(bool loaded = true);

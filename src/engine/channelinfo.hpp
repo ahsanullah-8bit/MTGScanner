@@ -10,6 +10,7 @@
 
 #include <core/frame.hpp>
 #include <engine/channelmetrics.h>
+#include <engine/framespersecond.hpp>
 #include <channeloptions.hpp>
 
 namespace MTGS {
@@ -28,7 +29,10 @@ struct ChannelInfo {
     QSharedPointer<ChannelMetrics> metrics;
 
     // This helps in sequencing.
-    QAtomicInt skippedFrames = 0;
+    QAtomicInt totalSkippedFrames = 0;
+    // FPS tracking
+    FramesPerSecond fps;
+    FramesPerSecond skippedFps;
 };
 
 } // namespace MTGS

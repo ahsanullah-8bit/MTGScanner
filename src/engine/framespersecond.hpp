@@ -36,7 +36,7 @@ public:
         expireTimestamps(now);
     }
 
-    qreal eps() {
+    qreal fps() {
         std::shared_lock<std::shared_mutex> lock(m_mtx);
         qreal now = QDateTime::currentDateTime().toSecsSinceEpoch();
         if (m_start == 0.0) { // Check if m_start is uninitialized

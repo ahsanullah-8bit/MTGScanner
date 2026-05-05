@@ -7,10 +7,12 @@
 #include <QScreen>
 #include <QVariant>
 #include <QSettings>
+#include <QQmlEngine>
 #include <QMetaObject>
 #include <QCameraDevice>
 #include <QMediaDevices>
 #include <QGuiApplication>
+#include <QCoreApplication>
 #include <QLoggingCategory>
 
 #include <core/frame.hpp>
@@ -51,7 +53,10 @@ void EngineWorker::init()
                 .arg(info->channelOptions.name)
                 .arg(frame->originalFrame.startTime());
 
-                info->skippedFrames++;
+                info->totalSkippedFrames++;
+                info->skippedFps.update();
+                info->metrics->setSkippedFps(info->skippedFps.fps());
+
                 std::get<1>(ports).try_put(tf::continue_msg());
                 return;
         }
@@ -78,6 +83,9 @@ void EngineWorker::init()
         f->originalFrame = QVideoFrame(QImage(f->mat.data, f->mat.cols, f->mat.rows, f->mat.step, QImage::Format_BGR888).copy());
         
         QMetaObject::invokeMethod(this, "sendFrameToMainThread", Qt::AutoConnection, Q_ARG(FramePtr, f));
+        auto &channel = m_channels.at(f->channelId);
+        channel->fps.update();
+        channel->metrics->setFps(channel->fps.fps());
     };
 
     // The critical processor node.
@@ -193,6 +201,8 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
     channel->outVideoSink = videoSink;
     channel->channelOptions = channelOptions;
     channel->metrics = QSharedPointer<ChannelMetrics>::create();
+    // QMLEngine be mad, if we don't do this.
+    channel->metrics->moveToThread(QCoreApplication::instance()->thread());
 
     tf::make_edge(*channel->asyncSrc, *channel->preLimiter);
     tf::make_edge(*channel->preLimiter, *m_processor);
@@ -208,7 +218,10 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
     
     channel->capture = { thread, worker };
     channel->capture.thread->start();
+
     channel->metrics->setStatus(Engine::Running);
+    channel->fps.start();
+    channel->skippedFps.start();
 
     m_channels.emplace(channelOptions.id, channel);
 
@@ -299,6 +312,18 @@ ChannelOptions Engine::createChannelOptions() const {
 ChannelOptions Engine::channelOptions(const QString &channelId) const
 {
     return m_channels.at(channelId)->channelOptions;
+}
+
+QObject *Engine::channelMetrics(const QString &channelId) const
+{
+    if (!m_channels.contains(channelId)) {
+        qCCritical(worker_logger) << QString("Requsted metrics for a non existent channel using id %1.").arg(channelId);
+        return nullptr;
+    }
+
+    QObject *metrics = m_channels.at(channelId)->metrics.get();
+    QQmlEngine::setObjectOwnership(metrics, QQmlEngine::CppOwnership);
+    return metrics;
 }
 
 void Engine::receiveFrameNotification(const FramePtr& frame) 

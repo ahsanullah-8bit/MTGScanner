@@ -2,13 +2,12 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
+import MTGScanner.Engine
 
 Pane {
     id: root
 
-    property int channelStatus: 2
-    property int visibleCards: 4
-    property int fps: 30
+    property var metrics
 
     readonly property var statusData: [
         { name: "Initializing", color: "#95a5a6" },
@@ -34,10 +33,10 @@ Pane {
         Label {
             Layout.alignment: Qt.AlignVCenter
 
-            text: root.statusData[root.channelStatus].name
+            text: root.metrics ? Qt.enumValueToString(Engine.ChannelStatus, root.metrics.status) : "Uknown"
             font.pixelSize: 14
             font.weight: Font.Medium
-            color: root.statusData[root.channelStatus].color
+            color: root.metrics ? root.metrics.statusColor : "red"
         }
 
         // Separator
@@ -52,7 +51,7 @@ Pane {
         Label {
             Layout.alignment: Qt.AlignVCenter
 
-            text: "FPS: " + root.fps
+            text: "FPS: " + (root.metrics ? root.metrics.fps : 0)
             font.pixelSize: 14
             opacity: 0.5
         }
@@ -69,7 +68,24 @@ Pane {
         Label {
             Layout.alignment: Qt.AlignVCenter
 
-            text: "Cards Visible: " + root.visibleCards
+            text: "Skipped FPS: " + (root.metrics ? root.metrics.skippedFps : 0)
+            font.pixelSize: 14
+            opacity: 0.5
+        }
+
+        // Separator
+        Rectangle {
+            Layout.alignment: Qt.AlignVCenter
+
+            width: 1
+            height: 20
+            opacity: 0.3
+        }
+
+        Label {
+            Layout.alignment: Qt.AlignVCenter
+
+            text: "Cards Visible: " + (root.metrics ? root.metrics.visibleCards : 0)
             font.pixelSize: 14
             opacity: 0.5
         }

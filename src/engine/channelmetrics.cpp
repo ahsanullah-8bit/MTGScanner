@@ -48,6 +48,7 @@ void ChannelMetrics::setStatus(int status)
 
     m_status.storeRelease(status);
     emit statusChanged(status);
+    emit statusColorChanged();
 }
 
 void ChannelMetrics::setFps(int fps)

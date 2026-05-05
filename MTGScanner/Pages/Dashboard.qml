@@ -105,6 +105,8 @@ Page {
             leftPadding: 20
             rightPadding: 20
             Material.elevation: 2
+
+            metrics: page.channelOps && page.channelOps.isValid() ? Engine.channelMetrics(page.channelOps.id) : undefined
         }
     }
 }

@@ -68,6 +68,7 @@ public:
     Q_INVOKABLE QString createChannelId() const;
     Q_INVOKABLE ChannelOptions createChannelOptions() const;
     Q_INVOKABLE ChannelOptions channelOptions(const QString &channelId) const;
+    Q_INVOKABLE QObject *channelMetrics(const QString &channelId) const;
 
 public slots:
     void receiveFrameNotification(const MTGS::FramePtr& frame);

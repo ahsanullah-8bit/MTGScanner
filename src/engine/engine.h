@@ -28,7 +28,7 @@ public slots:
     void init();
     void saveToSettings();
     void loadFromSettings();
-    void addChannel(const MTGS::ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16, QScreen *screen = nullptr);
+    void addChannel(const MTGS::ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int channelStatus = 0, QScreen *screen = nullptr);
     void deleteChannel(const MTGS::ChannelOptions &options);
     void startChannel(const QString &channelId);
     void stopChannel(const QString &channelId);
@@ -76,7 +76,7 @@ public:
 
 public slots:
     void receiveFrameNotification(const MTGS::FramePtr& frame);
-    void addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int maxInFlight = 16, QScreen *screen = nullptr);
+    void addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int channelStatus = 0, QScreen *screen = nullptr);
     void deleteChannel(const MTGS::ChannelOptions &options);
     void startChannel(const QString &channelId);
     void stopChannel(const QString &channelId);

@@ -30,6 +30,9 @@ EngineWorker::EngineWorker(tbb::concurrent_unordered_map<QString, QSharedPointer
 
 EngineWorker::~EngineWorker() 
 {
+    // Save the channel configs to settings.
+    saveToSettings();
+
     // Close all cameras
     for (auto &[_, channel] : m_channels) {
         channel->capture.thread->quit();
@@ -37,9 +40,6 @@ EngineWorker::~EngineWorker()
     }
     // Close the graph
     m_graph.wait_for_all();
-
-    // Save the channel configs to settings.
-    saveToSettings();
 }
 
 void EngineWorker::init() 
@@ -122,6 +122,7 @@ void EngineWorker::saveToSettings()
         settings.setValue("winGeometry", options.windowGeometry);
         settings.setValue("screenSerialNo", options.screenSerialNo);
         settings.setValue("screenName", options.screenName);
+        settings.setValue("status", it->second->metrics->status());
     }
 
     settings.endArray();
@@ -173,19 +174,20 @@ void EngineWorker::loadFromSettings()
             screen = QGuiApplication::primaryScreen();
             options.screenSerialNo = screen->serialNumber();
             options.screenName = screen->name();
-            addChannel(options, nullptr, 16, screen);
         } else {
             screen = *screen_it;
         }
 
+        const int channelStatus = settings.value("status").toInt();
+
         // Add the channel
-        addChannel(options, nullptr, 16, *screen_it);
+        addChannel(options, nullptr, channelStatus, screen);
     }
 
     settings.endArray();
 }
 
-void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink, int maxInFlight, QScreen *screen)
+void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink, int channelStatus, QScreen *screen)
 {
     if (!channelOptions.isValid()) {
         return;
@@ -196,11 +198,12 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
 
     QSharedPointer<ChannelInfo> channel = QSharedPointer<ChannelInfo>::create();
     channel->asyncSrc = QSharedPointer<tf::async_node<tf::continue_msg, FramePtr>>::create(m_graph, tf::unlimited, async_src_body);
-    channel->preLimiter = QSharedPointer<tf::limiter_node<FramePtr>>::create(m_graph, maxInFlight);
+    channel->preLimiter = QSharedPointer<tf::limiter_node<FramePtr>>::create(m_graph, channelOptions.maxInFlight);
     channel->postSequencer = QSharedPointer<tf::sequencer_node<FramePtr>>::create(m_graph, sequencer_body);
     channel->outVideoSink = videoSink;
     channel->channelOptions = channelOptions;
     channel->metrics = QSharedPointer<ChannelMetrics>::create();
+    channel->metrics->setStatus(channelStatus);
     // QMLEngine be mad, if we don't do this.
     channel->metrics->moveToThread(QCoreApplication::instance()->thread());
 
@@ -370,13 +373,13 @@ void Engine::receiveFrameNotification(const FramePtr& frame)
         videoSink->setVideoFrame(frame->originalFrame);
 }
 
-void Engine::addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink, int maxInFlight, QScreen *screen)
+void Engine::addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink, int channelStatus, QScreen *screen)
 {
     if (m_engine.thread && m_engine.worker) {
         QMetaObject::invokeMethod(m_engine.worker, "addChannel", Qt::AutoConnection,
             Q_ARG(ChannelOptions, channelOptions),
             Q_ARG(QVideoSink*, videoSink),
-            Q_ARG(int, maxInFlight),
+            Q_ARG(int, channelStatus),
             Q_ARG(QScreen*, screen)
         );
     } else {

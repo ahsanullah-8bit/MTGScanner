@@ -221,9 +221,15 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
         }
     );
     connect(worker, &CameraCapture::activeChanged,
-        [channel = channel, wl = worker_logger](bool active) {
-            channel->metrics->setStatus(active ? Engine::Running : Engine::Stopped);
-            qCDebug(wl) << "Channel" << static_cast<Engine::ChannelStatus>(channel->metrics->status());
+        [this, channel = channel, wl = worker_logger](bool active) {
+            if (active) {
+                channel->metrics->setStatus(Engine::Running);
+                emit channelStarted();
+            } else {
+                channel->metrics->setStatus(Engine::Stopped);
+                emit channelStopped();
+            }
+            qCDebug(wl) << "Channel" << channel->channelOptions.id << static_cast<Engine::ChannelStatus>(channel->metrics->status());
         }
     );
     
@@ -273,8 +279,7 @@ void EngineWorker::startChannel(const QString &channelId)
     if (m_channels.at(channelId)->metrics->status() <= Engine::Stopping)
         return;
 
-    m_channels.at(channelId)->capture.worker->start();
-    emit channelStarted();
+    QMetaObject::invokeMethod(m_channels.at(channelId)->capture.worker, "start");
 }
 
 void EngineWorker::stopChannel(const QString &channelId)
@@ -282,8 +287,7 @@ void EngineWorker::stopChannel(const QString &channelId)
     if (m_channels.at(channelId)->metrics->status() >= Engine::Stopped)
         return;
 
-    m_channels.at(channelId)->capture.worker->stop();
-    emit channelStopped();
+    QMetaObject::invokeMethod(m_channels.at(channelId)->capture.worker, "stop");
 }
 
 // ------------------ Engine Implementation ------------------

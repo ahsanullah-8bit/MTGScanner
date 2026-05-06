@@ -34,7 +34,7 @@ Pane {
 
             icon.source: "qrc:/qt/qml/MTGScanner/icons/" + (root.channelRunning ? "pause.svg" : "play.svg")
             opacity: 0.8
-            onClicked: startChannel()
+            onClicked: root.channelRunning ? stopChannel() : startChannel()
         }
     }
 }

@@ -11,6 +11,7 @@ Page {
     title: "Configuration Page"
 
     property channelOptions channelOps
+    property var metrics: channelOps && channelOps.isValid() ? Engine.channelMetrics(channelOps.id) : undefined
 
     onChannelOpsChanged: {
         if (channelOps.isValid()) {
@@ -56,7 +57,10 @@ Page {
             Material.elevation: 2
 
             channelName: page.channelOps.name
-            channelRunning: false
+            channelRunning: page.metrics && page.metrics.status == Engine.Running
+
+            onStartChannel: Engine.startChannel(page.channelOps.id)
+            onStopChannel: Engine.stopChannel(page.channelOps.id)
         }
 
         // Live Preview Section
@@ -106,7 +110,7 @@ Page {
             rightPadding: 20
             Material.elevation: 2
 
-            metrics: page.channelOps && page.channelOps.isValid() ? Engine.channelMetrics(page.channelOps.id) : undefined
+            metrics: page.metrics
         }
     }
 }

@@ -32,6 +32,11 @@ int ChannelMetrics::fps() const
     return m_fps.loadAcquire();
 }
 
+int ChannelMetrics::captureFps() const
+{
+    return m_captureFps.loadAcquire();
+}
+
 int ChannelMetrics::skippedFps() const
 {
     return m_skippedFps.loadAcquire();
@@ -59,6 +64,15 @@ void ChannelMetrics::setFps(int fps)
 
     m_fps.storeRelease(fps);
     emit fpsChanged(fps);
+}
+
+void ChannelMetrics::setCaptureFps(int captureFps)
+{
+    if (m_captureFps.loadRelaxed() == captureFps)
+        return;
+
+    m_captureFps.storeRelease(captureFps);
+    emit captureFpsChanged(captureFps);
 }
 
 void ChannelMetrics::setSkippedFps(int skippedFps)

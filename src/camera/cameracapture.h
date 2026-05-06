@@ -12,13 +12,19 @@
 #include <QSharedPointer>
 
 #include <core/frame.hpp>
+#include <engine/channelmetrics.h>
+#include <engine/framespersecond.hpp>
 
 namespace MTGS {
 
 class CameraCapture : public QObject {
     Q_OBJECT
 public:
-    CameraCapture(const QString &channelId, const QCameraDevice &device, tbb::flow::async_node<tbb::flow::continue_msg, FramePtr>::gateway_type &gateway, QObject*parent = nullptr);
+    CameraCapture(const QString &channelId,
+        const QCameraDevice &device,
+        tbb::flow::async_node<tbb::flow::continue_msg, FramePtr>::gateway_type &gateway,
+        QSharedPointer<ChannelMetrics> metrics,
+        QObject*parent = nullptr);
     ~CameraCapture();
     QVideoSink *videoSink();
     QCameraDevice cameraDevice() const;
@@ -39,6 +45,8 @@ private:
     QMediaCaptureSession *m_captureSession;
 
     size_t m_frameSequenceCount = 0;
+    FramesPerSecond m_fps;
+    QSharedPointer<ChannelMetrics> m_metrics;
     tbb::flow::async_node<tbb::flow::continue_msg, FramePtr>::gateway_type &m_gateway;
 };
 

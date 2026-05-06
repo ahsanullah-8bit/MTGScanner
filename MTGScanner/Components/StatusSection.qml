@@ -68,6 +68,24 @@ Pane {
         Label {
             Layout.alignment: Qt.AlignVCenter
 
+            text: "Capture FPS: " + (root.metrics ? root.metrics.captureFps : 0)
+            font.pixelSize: 14
+            opacity: 0.5
+        }
+
+        // Separator
+        Rectangle {
+            Layout.alignment: Qt.AlignVCenter
+
+            width: 1
+            height: 20
+            opacity: 0.3
+        }
+
+
+        Label {
+            Layout.alignment: Qt.AlignVCenter
+
             text: "Skipped FPS: " + (root.metrics ? root.metrics.skippedFps : 0)
             font.pixelSize: 14
             opacity: 0.5

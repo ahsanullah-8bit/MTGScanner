@@ -209,7 +209,7 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
     tf::make_edge(*channel->postSequencer, *m_uiNotifier);
 
     auto thread = new QThread();
-    auto worker = new CameraCapture(channelOptions.id, channelOptions.cameraDevice, channel->asyncSrc->gateway());
+    auto worker = new CameraCapture(channelOptions.id, channelOptions.cameraDevice, channel->asyncSrc->gateway(), channel->metrics);
     worker->moveToThread(thread);
     connect(thread, &QThread::started, worker, &CameraCapture::init);
     connect(thread, &QThread::finished, worker, &QObject::deleteLater);

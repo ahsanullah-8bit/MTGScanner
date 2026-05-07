@@ -2,7 +2,7 @@
 
 namespace MTGS {
 
-ChannelModel::ChannelModel(tbb::concurrent_unordered_map<QString, QSharedPointer<ChannelInfo>> &channel, QObject *parent)
+ChannelModel::ChannelModel(tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> &channel, QObject *parent)
     : QAbstractListModel(parent), m_channel(channel) 
 {}
 
@@ -17,7 +17,7 @@ QVariant ChannelModel::data(const QModelIndex &index, int role) const
     if (!index.isValid() || index.row() >= static_cast<int>(m_channel.size()))
         return QVariant();
 
-    auto it = m_channel.begin();
+    auto it = m_channel.cbegin();
     std::advance(it, index.row());
     const auto &channelInfo = it->second;
     

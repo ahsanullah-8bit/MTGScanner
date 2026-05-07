@@ -21,10 +21,12 @@
 namespace MTGS {
 
 namespace tf = tbb::flow;
+using accessor = tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>>::accessor;
+using const_accessor = tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>>::const_accessor;
 
 Q_STATIC_LOGGING_CATEGORY(worker_logger, "mtgs.engine.worker")
 
-EngineWorker::EngineWorker(tbb::concurrent_unordered_map<QString, QSharedPointer<ChannelInfo>> &channels, QObject *parent)
+EngineWorker::EngineWorker(tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> &channels, QObject *parent)
     : QObject(parent), m_channels(channels) 
 {}
 
@@ -48,17 +50,21 @@ void EngineWorker::init()
         // Process the image. For now, we just pass it through.
 
         if (frame->timestamp.msecsTo(QTime::currentTime()) > 100) {
-            auto &info = m_channels.at(frame->channelId);
-            qCWarning(worker_logger) << QString("Channel %1 frame at %2 expired")
-                .arg(info->channelOptions.name)
-                .arg(frame->originalFrame.startTime());
+            accessor a;
+            if (m_channels.find(a, frame->channelId)
+                && !a.empty()) {
+                auto &info = a->second;
+                qCWarning(worker_logger) << QString("Channel %1 frame at %2 expired")
+                    .arg(info->channelOptions.name)
+                    .arg(frame->originalFrame.startTime());
 
                 info->totalSkippedFrames++;
                 info->skippedFps.update();
                 info->metrics->setSkippedFps(info->skippedFps.fps());
+            }
 
-                std::get<1>(ports).try_put(tf::continue_msg());
-                return;
+            std::get<1>(ports).try_put(tf::continue_msg());
+            return;
         }
 
         std::get<0>(ports).try_put(frame);
@@ -66,14 +72,16 @@ void EngineWorker::init()
     };
 
     auto frame_distributor_body = [this](const FramePtr &frame, auto &ports) {
-        if (!m_channels.contains(frame->channelId)) {
+        accessor a;
+        if (!m_channels.find(a, frame->channelId)
+            || a.empty()) {
             std::get<0>(ports).try_put(tf::continue_msg());
             return;
         }
 
         // TODO: Maybe check for frame expiration here as well.
 
-        auto &channel = m_channels.at(frame->channelId);
+        auto &channel = a->second;
         channel->postSequencer->try_put(frame);
         channel->preLimiter->decrementer().try_put(tf::continue_msg());
         std::get<0>(ports).try_put(tf::continue_msg());
@@ -83,9 +91,13 @@ void EngineWorker::init()
         f->originalFrame = QVideoFrame(QImage(f->mat.data, f->mat.cols, f->mat.rows, f->mat.step, QImage::Format_BGR888).copy());
         
         QMetaObject::invokeMethod(this, "sendFrameToMainThread", Qt::AutoConnection, Q_ARG(FramePtr, f));
-        auto &channel = m_channels.at(f->channelId);
-        channel->fps.update();
-        channel->metrics->setFps(channel->fps.fps());
+
+        accessor a;
+        if (m_channels.find(a, f->channelId) && !a.empty()) {
+            auto &channel = a->second;
+            channel->fps.update();
+            channel->metrics->setFps(channel->fps.fps());
+        }
     };
 
     // The critical processor node.
@@ -246,7 +258,11 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
         QMetaObject::invokeMethod(channel->capture.worker, "start");
     }
 
-    m_channels.emplace(channelOptions.id, channel);
+    if (!m_channels.emplace(channelOptions.id, channel)) {
+        qCCritical(worker_logger) << "Failed to insert a new channel after connecting it, named" << channel->channelOptions.name;
+        // TODO: We may need to do cleanup, if this ever happens.
+        return;
+    }
 
     // TODO: Launch and link output window.
 
@@ -255,7 +271,13 @@ void EngineWorker::addChannel(const ChannelOptions &channelOptions, QVideoSink *
 
 void EngineWorker::deleteChannel(const ChannelOptions &options)
 {
-    auto &info = m_channels.at(options.id);
+    accessor a;
+    if (!m_channels.find(a, options.id)
+        || a.empty()) {
+        qCCritical(worker_logger) << "Failed to delete a channel named" << options.name;
+        return;
+    }
+    auto &info = a->second;
 
     // Stop capture
     QMetaObject::invokeMethod(info->capture.worker, "stop");
@@ -272,25 +294,34 @@ void EngineWorker::deleteChannel(const ChannelOptions &options)
 
     // Delete
     // TODO: Make sure everything dies before release.
-    m_channels.unsafe_erase(options.id);
+    if (!m_channels.erase(a)) {
+        qCCritical(worker_logger) << "Failed to erase a channel after disconnecting it, named" << options.name;
+        return;
+    }
 
     emit channelDeleted(options);
 }
 
 void EngineWorker::startChannel(const QString &channelId)
 {
-    if (m_channels.at(channelId)->metrics->status() <= Engine::Stopping)
+    accessor a;
+    if (!m_channels.find(a, channelId)
+        || a.empty()
+        || a->second->metrics->status() <= Engine::Stopping)
         return;
 
-    QMetaObject::invokeMethod(m_channels.at(channelId)->capture.worker, "start");
+    QMetaObject::invokeMethod(a->second->capture.worker, "start");
 }
 
 void EngineWorker::stopChannel(const QString &channelId)
 {
-    if (m_channels.at(channelId)->metrics->status() >= Engine::Stopped)
+    accessor a;
+    if (!m_channels.find(a, channelId)
+        || a.empty()
+        || a->second->metrics->status() >= Engine::Stopped)
         return;
 
-    QMetaObject::invokeMethod(m_channels.at(channelId)->capture.worker, "stop");
+    QMetaObject::invokeMethod(a->second->capture.worker, "stop");
 }
 
 // ------------------ Engine Implementation ------------------
@@ -346,29 +377,38 @@ ChannelOptions Engine::createChannelOptions() const {
 
 ChannelOptions Engine::channelOptions(const QString &channelId) const
 {
-    return m_channels.at(channelId)->channelOptions;
+    const_accessor a;
+    if (!m_channels.find(a, channelId)
+        || a.empty())
+        return ChannelOptions();
+
+    return a->second->channelOptions;
 }
 
 QObject *Engine::channelMetrics(const QString &channelId) const
 {
-    if (!m_channels.contains(channelId)) {
+    const_accessor a;
+    if (!m_channels.find(a, channelId)
+        || a.empty()) {
         qCCritical(worker_logger) << QString("Requsted metrics for a non existent channel using id %1.").arg(channelId);
         return nullptr;
     }
 
-    QObject *metrics = m_channels.at(channelId)->metrics.get();
+    QObject *metrics = a->second->metrics.get();
     QQmlEngine::setObjectOwnership(metrics, QQmlEngine::CppOwnership);
     return metrics;
 }
 
 void Engine::receiveFrameNotification(const FramePtr& frame) 
 {
-    if (!m_channels.contains(frame->channelId)) {
+    const_accessor a;
+    if (!m_channels.find(a, frame->channelId)
+        || a.empty()) {
         qCDebug(engine_logger) << QString("Stranded frame %1 from channel %2").arg(frame->sequenceId).arg(frame->channelId);
         return;
     }
 
-    auto videoSink = m_channels.at(frame->channelId)->outVideoSink;
+    auto videoSink = a->second->outVideoSink;
     if (videoSink)
         videoSink->setVideoFrame(frame->originalFrame);
 }
@@ -389,7 +429,9 @@ void Engine::addChannel(const ChannelOptions &channelOptions, QVideoSink *videoS
 
 void Engine::deleteChannel(const ChannelOptions &options)
 {
-    if (!m_channels.contains(options.id)) {
+    const_accessor a;
+    if (!m_channels.find(a, options.id)
+        || a.empty()) {
         qCCritical(worker_logger) << QString("Trying to delete a non existent channel using id %1.").arg(options.id);
         return;
     }
@@ -399,7 +441,9 @@ void Engine::deleteChannel(const ChannelOptions &options)
 
 void Engine::startChannel(const QString &channelId)
 {
-    if (!m_channels.contains(channelId)) {
+    const_accessor a;
+    if (!m_channels.find(a, channelId)
+        || a.empty()) {
         qCCritical(worker_logger) << QString("Trying to start a non existent channel using id %1.").arg(channelId);
         return;
     }
@@ -409,7 +453,9 @@ void Engine::startChannel(const QString &channelId)
 
 void Engine::stopChannel(const QString &channelId)
 {
-    if (!m_channels.contains(channelId)) {
+    const_accessor a;
+    if (!m_channels.find(a, channelId)
+        || a.empty()) {
         qCCritical(worker_logger) << QString("Trying to stop a non existent channel using id %1.").arg(channelId);
         return;
     }
@@ -419,12 +465,14 @@ void Engine::stopChannel(const QString &channelId)
 
 void Engine::registerChannelOutSink(const QString &channelId, QVideoSink *videoSink)
 {
-    if (!m_channels.contains(channelId)) {
+    accessor a;
+    if (!m_channels.find(a, channelId)
+        || a.empty()) {
         qCDebug(engine_logger) << QString("Trying to register videosink for unknown channel %1").arg(channelId);
         return;
     }
 
-    m_channels.at(channelId)->outVideoSink = videoSink;
+    a->second->outVideoSink = videoSink;
 }
 
 void Engine::setEngineLoaded(bool loaded) 

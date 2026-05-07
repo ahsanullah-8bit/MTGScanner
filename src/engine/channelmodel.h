@@ -19,7 +19,7 @@ public:
         DeviceRole,
     };
 
-    explicit ChannelModel(tbb::concurrent_unordered_map<QString, QSharedPointer<ChannelInfo>> &channel, QObject *parent = nullptr);
+    explicit ChannelModel(tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> &channel, QObject *parent = nullptr);
 
     // QAbstractItemModel interface
     int rowCount(const QModelIndex &parent) const override;
@@ -32,7 +32,7 @@ public slots:
     void channelDeleted(const ChannelOptions &options);
 
 private:
-    tbb::concurrent_unordered_map<QString, QSharedPointer<ChannelInfo>> &m_channel;
+    tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> &m_channel;
 };
 
 } // namespace MTGS

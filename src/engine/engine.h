@@ -21,7 +21,7 @@ namespace MTGS {
 class EngineWorker : public QObject {
     Q_OBJECT
 public:
-    EngineWorker(tbb::concurrent_unordered_map<QString, QSharedPointer<ChannelInfo>> &channels, QObject *parent = nullptr);
+    EngineWorker(tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> &channels, QObject *parent = nullptr);
     virtual ~EngineWorker();
 
 public slots:
@@ -47,7 +47,7 @@ private:
     QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<tf::continue_msg>>> m_frameDistributor;
     QSharedPointer<tf::function_node<FramePtr>> m_uiNotifier;
 
-    tbb::concurrent_unordered_map<QString, QSharedPointer<ChannelInfo>> &m_channels;
+    tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> &m_channels;
 };
 
 class Engine : public QObject {
@@ -98,7 +98,7 @@ private:
         EngineWorker *worker;
         QThread *thread;
     } m_engine;
-    tbb::concurrent_unordered_map<QString, QSharedPointer<ChannelInfo>> m_channels;
+    tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> m_channels;
 };
 
 } // namespace MTGS

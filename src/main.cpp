@@ -1,4 +1,5 @@
 #include <QObject>
+#include <QQmlEngine>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 
@@ -24,6 +25,7 @@ int main(int argc, char *argv[])
     qmlRegisterSingletonInstance("MTGScanner.Engine", 0, 1, "Engine", &mtgsEngine);
 
     QSharedPointer<MTGS::ChannelModel> channelsModel = mtgsEngine.createSharedChannelModel();
+    QQmlEngine::setObjectOwnership(channelsModel.data(), QQmlEngine::CppOwnership);
     qmlRegisterSingletonInstance("MTGScanner.Engine", 0, 1, "ChannelsModel", channelsModel.data());
 
     engine.loadFromModule("MTGScanner", "Main");

@@ -280,6 +280,8 @@ Engine::~Engine()
 {
     m_engine.thread->quit();
     m_engine.thread->wait();
+
+    saveToSettings();
 }
 
 QSharedPointer<ChannelModel> Engine::createSharedChannelModel() 

@@ -10,17 +10,18 @@ Page {
     id: page
     title: "Configuration Page"
 
-    property channelOptions channelOps
-    property var metrics: channelOps && channelOps.isValid() ? Engine.channelMetrics(channelOps.id) : undefined
+    property var channel: null
+    property string prevChannelId
 
-    onChannelOpsChanged: {
-        if (channelOps.isValid()) {
-            Engine.registerChannelOutSink(channelOps.id, videoCard.videoOutput.videoSink)
+    onChannelChanged: {
+        if (prevChannelId !== "") {
+            Engine.unRegisterChannelOutSink(prevChannelId)
         }
-    }
 
-    MediaDevices {
-        id: mediaDevices
+        if (channel !== null) {
+            Engine.registerChannelOutSink(channel.options.id, videoCard.videoOutput.videoSink)
+            prevChannelId = channel.options.id
+        }
     }
 
     background: Rectangle {
@@ -32,7 +33,7 @@ Page {
         font.pixelSize: 16
         font.bold: true
         color: Material.hintTextColor
-        visible: !page.channelOps || !page.channelOps.isValid()
+        visible: channel === null
 
         anchors.centerIn: parent
     }
@@ -44,7 +45,7 @@ Page {
         anchors.topMargin: 16
         anchors.bottomMargin: 16
         spacing: 12
-        visible: page.channelOps && page.channelOps.isValid()
+        visible: channel !== null
 
         // Configuration Header
         HeaderSection {
@@ -56,11 +57,11 @@ Page {
             rightPadding: 20
             Material.elevation: 2
 
-            channelName: page.channelOps.name
-            channelRunning: page.metrics && page.metrics.status == Engine.Running
+            channelName: channel === null ? "" : channel.options.name
+            channelRunning: channel === null ? false : channel.metrics.status === Engine.Running
 
-            onStartChannel: Engine.startChannel(page.channelOps.id)
-            onStopChannel: Engine.stopChannel(page.channelOps.id)
+            onStartChannel: Engine.startChannel(channel.options.id)
+            onStopChannel: Engine.stopChannel(channel.options.id)
         }
 
         // Live Preview Section
@@ -82,7 +83,8 @@ Page {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                camera: page.channelOps.cameraDevice
+                cameraId: channel !== null ? channel.options.cameraDevice.id : cameraId
+                description: channel !== null ? channel.options.cameraDevice.description : description
             }
 
             ActiveFiltersCard {
@@ -96,7 +98,9 @@ Page {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                options: page.channelOps
+                winName: channel !== null ? channel.options.windowName : winName
+                geometry: channel !== null ? channel.options.windowGeometry : geometry
+                screenName: channel !== null ? channel.options.screenName : screenName
             }
         }
 
@@ -110,7 +114,12 @@ Page {
             rightPadding: 20
             Material.elevation: 2
 
-            metrics: page.metrics
+            status: channel !== null ? channel.metrics.status : status
+            statusColor: channel !== null ? channel.metrics.statusColor : statusColor
+            fps: channel !== null ? channel.metrics.fps : fps
+            captureFps: channel !== null ? channel.metrics.captureFps : captureFps
+            skippedFps: channel !== null ? channel.metrics.skippedFps : skippedFps
+            visibleCards: channel !== null ? channel.metrics.visibleCards : visibleCards
         }
     }
 }

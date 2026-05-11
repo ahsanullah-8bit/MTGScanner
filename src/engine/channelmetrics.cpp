@@ -1,14 +1,17 @@
 #include "channelmetrics.h"
-#include <qcolor.h>
-#include <qobject.h>
 
 namespace MTGS {
 
-ChannelMetrics::ChannelMetrics(QObject *parent) : QObject(parent) {}
+ChannelMetrics::ChannelMetrics(QObject *parent)
+    : QObject(parent)
+{}
 
 int ChannelMetrics::status() const
 {
-    return m_status.loadAcquire();
+    if (!m_status)
+        return 0;
+
+    return m_status->loadAcquire();
 }
 
 QColor ChannelMetrics::statusColor() const
@@ -24,73 +27,82 @@ QColor ChannelMetrics::statusColor() const
         "#34495e"  // "Errored"
     };
 
-    return status_colors.at(m_status.loadAcquire() % status_colors.size());
+    if (!m_status)
+        return status_colors.at(0);
+
+    return status_colors.at(m_status->loadAcquire() % status_colors.size());
 }
 
 int ChannelMetrics::fps() const
 {
-    return m_fps.loadAcquire();
+    if (!m_fps)
+        return -1;
+
+    return m_fps->fps();
 }
 
 int ChannelMetrics::captureFps() const
 {
-    return m_captureFps.loadAcquire();
+    if (!m_captureFps)
+        return -1;
+
+    return m_captureFps->fps();
 }
 
 int ChannelMetrics::skippedFps() const
 {
-    return m_skippedFps.loadAcquire();
+    if (!m_skippedFps)
+        return -1;
+
+    return m_skippedFps->fps();
 }
 
 int ChannelMetrics::visibleCards() const
 {
-    return m_visibleCards.loadAcquire();
+    if (!m_visibleCards)
+        return -1;
+
+    return m_visibleCards->loadAcquire();
 }
 
-void ChannelMetrics::setStatus(int status)
+void ChannelMetrics::setStatus(QAtomicInt *status)
 {
-    if (m_status.loadRelaxed() == status)
+    if (m_status == status)
         return;
 
-    m_status.storeRelease(status);
-    emit statusChanged(status);
-    emit statusColorChanged();
+    m_status = status;
 }
 
-void ChannelMetrics::setFps(int fps)
+void ChannelMetrics::setFps(FramesPerSecond *fps)
 {
-    if (m_fps.loadRelaxed() == fps)
+    if (m_fps == fps)
         return;
 
-    m_fps.storeRelease(fps);
-    emit fpsChanged(fps);
+    m_fps = fps;
 }
 
-void ChannelMetrics::setCaptureFps(int captureFps)
+void ChannelMetrics::setCaptureFps(FramesPerSecond *captureFps)
 {
-    if (m_captureFps.loadRelaxed() == captureFps)
+    if (m_captureFps == captureFps)
         return;
 
-    m_captureFps.storeRelease(captureFps);
-    emit captureFpsChanged(captureFps);
+    m_captureFps = captureFps;
 }
 
-void ChannelMetrics::setSkippedFps(int skippedFps)
+void ChannelMetrics::setSkippedFps(FramesPerSecond *skippedFps)
 {
-    if (m_skippedFps.loadRelaxed() == skippedFps)
+    if (m_skippedFps == skippedFps)
         return;
 
-    m_skippedFps.storeRelease(skippedFps);
-    emit skippedFpsChanged(skippedFps);
+    m_skippedFps = skippedFps;
 }
 
-void ChannelMetrics::setVisibleCards(int visibleCards)
+void ChannelMetrics::setVisibleCards(QAtomicInt *visibleCards)
 {
-    if (m_visibleCards.loadRelaxed() == visibleCards)
+    if (m_visibleCards == visibleCards)
         return;
 
-    m_visibleCards.storeRelease(visibleCards);
-    emit visibleCardsChanged(visibleCards);
+    m_visibleCards = visibleCards;
 }
 
 }

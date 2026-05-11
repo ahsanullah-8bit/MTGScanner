@@ -9,9 +9,8 @@ Drawer {
 
     property alias currentIndex: channelList.currentIndex
     property alias channelModel: channelList.model
-    property channelOptions currentChannelOptions
     signal addChannelClicked()
-    signal deleteChannelClicked(options: channelOptions)
+    signal deleteChannelClicked(channel: var)
 
     Material.roundedScale: Material.SmallScale
 
@@ -74,32 +73,14 @@ Drawer {
                             icon.source: "qrc:/qt/qml/MTGScanner/icons/trash-2.svg"
                             opacity: 0.6
                             visible: channelDelegate.hovered
-                            onClicked: root.deleteChannelClicked(Engine.channelOptions(model.id))
+                            onClicked: root.deleteChannelClicked(Engine.channel(model.id))
                         }
                     }
                 }
 
                 onClicked: {
-                    root.currentChannelOptions = Engine.channelOptions(model.id)
+                    Engine.setCurrentChannelById(model.id)
                     channelList.currentIndex = index
-                }
-
-                Component.onCompleted: {
-                    if (root.currentChannelOptions && root.currentChannelOptions.isValid())
-                        return
-
-                    // THIS SHOULD ONLY HAPPEN, IF THERE'S NO CHANNEL AT ALL.
-                    root.currentChannelOptions = Engine.channelOptions(model.id)
-                    channelList.currentIndex = index
-                }
-
-                Component.onDestruction: {
-                    if (channelList.count > 0)
-                        return
-
-                    // THIS SHOULD ONLY HAPPEN, IF THERE'S NO CHANNEL AT ALL.
-                    root.currentChannelOptions = Engine.createChannelOptions();
-                    channelList.currentIndex = -1
                 }
             }
         }

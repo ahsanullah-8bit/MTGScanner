@@ -25,8 +25,8 @@ struct ChannelOptions {
 
     QML_VALUE_TYPE(channelOptions)
     QML_CONSTRUCTIBLE_VALUE
-public:
 
+public:
     QString id;
     QString name;
     int maxInFlight = 16;
@@ -46,7 +46,23 @@ public:
                && !cameraDevice.isNull()
                && !windowName.isEmpty();
     }
-    bool isValid(const QLoggingCategory &logger) const { return true; }
+
+    friend bool operator==(const ChannelOptions& lhs, const ChannelOptions& rhs) {
+        return lhs.id == rhs.id &&
+               lhs.name == rhs.name &&
+               lhs.maxInFlight == rhs.maxInFlight &&
+               qFuzzyCompare(lhs.detectionThreshold, rhs.detectionThreshold) &&
+               lhs.filters == rhs.filters &&
+               lhs.cameraDevice == rhs.cameraDevice &&
+               lhs.windowName == rhs.windowName &&
+               lhs.windowGeometry == rhs.windowGeometry &&
+               lhs.screenSerialNo == rhs.screenSerialNo &&
+               lhs.screenName == rhs.screenName;
+    }
+
+    friend bool operator!=(const ChannelOptions& lhs, const ChannelOptions& rhs) {
+        return !(lhs == rhs);
+    }
 };
 
 } // namespace MTGS

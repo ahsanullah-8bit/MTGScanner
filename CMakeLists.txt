@@ -17,7 +17,7 @@ qt_add_executable(${PROJECT_NAME}App
     src/camera/cameracapture.cpp
     src/core/frame.hpp
     src/core/prediction.hpp
-    src/engine/channelinfo.hpp
+    src/engine/channel.hpp
     src/engine/channelmetrics.h
     src/engine/channelmetrics.cpp
     src/engine/channelmodel.h

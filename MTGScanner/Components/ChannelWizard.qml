@@ -9,11 +9,7 @@ import MTGScanner.Engine
 Dialog {
     id: dialog
 
-    property channelOptions channelConfig
-    property bool isAnEdit: false
-
-    signal createChannel(channelOptions option)
-
+    property var channel: null
     property int currentStep: 0
     readonly property int stepCount: 3
 
@@ -26,17 +22,9 @@ Dialog {
     x: parent.x + (parent.width / 2 - width / 2)
     y: parent.y + (parent.height / 2 - height / 2)
 
-    // Multimedia
-    MediaDevices {
-        id: mediaDevices
-    }
-
-    CaptureSession {
-        id: captureSession
-        camera: Camera {
-            id: camera
-        }
-        videoOutput: videoOutput
+    Component.onCompleted: {
+        dialog.channel = Engine.createChannel()
+        dialog.channel.captureSession.setVideoOutput(videoOutput)
     }
 
     // Wizard page content
@@ -61,16 +49,17 @@ Dialog {
                 id: cameraCombo
                 Layout.fillWidth: true
                 textRole: "description"
-                model: mediaDevices.videoInputs
+                model: Engine.availableCameras
                 currentIndex: 0
                 Material.foreground: Material.foreground
                 onCurrentTextChanged: {
-                    if (camera.active)
-                        camera.stop()
+                    if (dialog.channel.camera.active)
+                        dialog.channel.camera.stop()
 
-                    channelConfig.cameraDevice = mediaDevices.videoInputs[currentIndex]
-                    camera.cameraDevice = mediaDevices.videoInputs[currentIndex]
-                    camera.start()
+                    var selectedCamera = cameraCombo.model[currentIndex]
+                    dialog.channel.options.cameraDevice = selectedCamera
+                    dialog.channel.camera.cameraDevice = selectedCamera
+                    dialog.channel.camera.start()
                 }
             }
             // Camera Preview
@@ -109,7 +98,7 @@ Dialog {
             }
 
             // Close & Open the camera based on the page.
-            onVisibleChanged: !visible ? camera.stop() : camera.start()
+            onVisibleChanged: !visible ? dialog.channel.camera.stop() : dialog.channel.camera.start()
         }
 
         // Step 2: Channel name & detection settings
@@ -132,9 +121,9 @@ Dialog {
                 Layout.alignment: Qt.AlignLeft | Qt.AlignTop
 
                 placeholderText: "Channel Name"
-                text: dialog.channelConfig.name
+                text: dialog.channel.options.name
 
-                onTextEdited: dialog.channelConfig.name = text
+                onTextEdited: dialog.channel.options.name = text
             }
             Label {
                 text: "Active Filters"
@@ -152,11 +141,11 @@ Dialog {
                     delegate: Button {
                         text: modelData
                         checkable: true
-                        checked: dialog.channelConfig.filters.indexOf(modelData) >= 0
+                        checked: dialog.channel.options.filters.indexOf(modelData) >= 0
                         flat: true
                         // Toggle filter in the array
                         onClicked: {
-                            let filters = dialog.channelConfig.filters
+                            let filters = dialog.channel.options.filters
                             if (checked) {
                                 if (filters.indexOf(modelData) === -1)
                                     filters.push(modelData);
@@ -164,7 +153,7 @@ Dialog {
                                 var idx = filters.indexOf(modelData);
                                 if (idx >= 0) filters.splice(idx, 1);
                             }
-                            dialog.channelConfig.filters = filters;
+                            dialog.channel.options.filters = filters;
                         }
                         Material.foreground: checked ? Material.accent : Material.hintTextColor
                         Material.background: "transparent"
@@ -172,7 +161,7 @@ Dialog {
                             // TODO: initialize activeFilters (Rare+ and Foil Only default checked)
                             if (modelData === "Rare+" || modelData === "Foil Only") {
                                 checked = true;
-                                dialog.channelConfig.filters.push(modelData);
+                                dialog.channel.options.filters.push(modelData);
                             }
                         }
                     }
@@ -183,7 +172,7 @@ Dialog {
                 Layout.alignment: Qt.AlignLeft | Qt.AlignTop
                 spacing: 12
 
-                property int threshold: Math.floor(dialog.channelConfig.detectionThreshold)
+                property int threshold: Math.floor(dialog.channel.options.detectionThreshold)
                 Label {
                     text: "Detection Threshold: " + parent.threshold
                     color: Material.foreground
@@ -194,7 +183,7 @@ Dialog {
                     to: 100
                     stepSize: 1
                     value: parent.threshold
-                    onMoved: dialog.channelConfig.detectionThreshold = value
+                    onMoved: dialog.channel.options.detectionThreshold = value
                     Layout.fillWidth: true
                 }
             }
@@ -223,8 +212,8 @@ Dialog {
                     id: outputNameField
                     Layout.fillWidth: true
                     placeholderText: "Window Name"
-                    text: dialog.channelConfig.windowName
-                    onTextEdited: dialog.channelConfig.windowName = text
+                    text: dialog.channel.options.windowName
+                    onTextEdited: dialog.channel.options.windowName = text
                 }
 
                 // Height x Width
@@ -239,8 +228,8 @@ Dialog {
                             id: outputXSpin
                             from: 0
                             to: 7680
-                            value: dialog.channelConfig.windowGeometry.x
-                            onValueModified: dialog.channelConfig.windowGeometry.x = value
+                            value: dialog.channel.options.windowGeometry.x
+                            onValueModified: dialog.channel.options.windowGeometry.x = value
                             editable: true
                         }
                     }
@@ -253,8 +242,8 @@ Dialog {
                             id: outputYSpin
                             from: 0
                             to: 4320
-                            value: dialog.channelConfig.windowGeometry.y
-                            onValueModified: dialog.channelConfig.windowGeometry.y = value
+                            value: dialog.channel.options.windowGeometry.y
+                            onValueModified: dialog.channel.options.windowGeometry.y = value
                             editable: true
                         }
                     }
@@ -267,8 +256,8 @@ Dialog {
                             id: outputWidthSpin
                             from: 100
                             to: 3840
-                            value: dialog.channelConfig.windowGeometry.width
-                            onValueModified: dialog.channelConfig.windowGeometry.width = value
+                            value: dialog.channel.options.windowGeometry.width
+                            onValueModified: dialog.channel.options.windowGeometry.width = value
                             editable: true
                         }
                     }
@@ -281,8 +270,8 @@ Dialog {
                             id: outputHeightSpin
                             from: 100
                             to: 2160
-                            value: dialog.channelConfig.windowGeometry.height
-                            onValueModified: dialog.channelConfig.windowGeometry.height = value
+                            value: dialog.channel.options.windowGeometry.height
+                            onValueModified: dialog.channel.options.windowGeometry.height = value
                             editable: true
                         }
                     }
@@ -295,7 +284,7 @@ Dialog {
                     Layout.columnSpan: 2
                     model: ["Primary Monitor", "Secondary Monitor (Right)", "Secondary Monitor (Left)"]
                     currentIndex: 0
-                    onCurrentTextChanged: dialog.channelConfig.screenName = currentText
+                    onCurrentTextChanged: dialog.channel.options.screenName = currentText
                 }
             }
         }
@@ -310,7 +299,13 @@ Dialog {
 
             text: "Cancel"
             flat: true
-            onClicked: dialog.reject()
+            onClicked: {
+                dialog.channel.camera.stop()
+                dialog.channel.captureSession.setVideoOutput(null)
+                Engine.destroyChannel(dialog.channel)
+                dialog.channel = null
+                dialog.reject()
+            }
         }
         Item { Layout.fillWidth: true }
         Button {
@@ -333,15 +328,10 @@ Dialog {
                     currentStep++;
                 } else {
                     // CRITICAL: Clear the device to release the system handle
-                    camera.stop()
-                    camera.destroy()
-                    captureSession.destroy()
+                    dialog.channel.camera.stop()
+                    dialog.channel.captureSession.setVideoOutput(null)
 
-                    // Build config object and emit signal
-                    dialog.channelConfig.id = Engine.createChannelId()
-
-                    Engine.addChannel(dialog.channelConfig)
-                    createChannel(dialog.channelConfig);
+                    Engine.addChannel(dialog.channel)
                     dialog.accept();
                 }
             }

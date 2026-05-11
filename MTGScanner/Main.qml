@@ -1,5 +1,5 @@
 import QtQuick
-import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
 import MTGScanner.Components
 import MTGScanner.Pages
@@ -53,16 +53,20 @@ ApplicationWindow {
         interactive: !window.showDrawer
         position: window.showDrawer ? 1 : 0
         visible: window.showDrawer
-        channelModel: ChannelsModel
+        channelModel: ChannelsModel // A singleton
 
         onAddChannelClicked: channelWizardLoader.active = true
+        onDeleteChannelClicked: (channel) => {
+            deleteDialog.channelOptions = channel.options
+            deleteDialog.open()
+        }
     }
 
     Dashboard {
         anchors.fill: parent
         anchors.leftMargin: window.showDrawer ? sidebar.width : undefined
 
-        channelOps: sidebar.currentChannelOptions
+        channel: Engine.currentChannel
     }
     
     // Channel Wizard Loader
@@ -99,15 +103,6 @@ ApplicationWindow {
 
         Label {
             text: "Are you sure, you want to delete the channel?"
-        }
-    }
-
-    Connections {
-        target: sidebar
-
-        function onDeleteChannelClicked(options) {
-            deleteDialog.channelOptions = options
-            deleteDialog.open()
         }
     }
 }

@@ -10,7 +10,9 @@ Pane {
     Material.elevation: 2
     padding: 20
 
-    property channelOptions options
+    property string winName: "Window 1"
+    property rect geometry
+    property string screenName: "Primary 1"
 
     ColumnLayout {
         spacing: 12
@@ -24,7 +26,7 @@ Pane {
         }
 
         Label {
-            text: root.options.windowName + " - " + root.options.screenName
+            text: root.winName + " - " + root.screenName
             font.pixelSize: 14
             font.weight: Font.Medium
             color: Material.foreground
@@ -32,8 +34,8 @@ Pane {
 
         // Detail: Size & Position
         Label {
-            text: root.options.windowGeometry.width + "×" + root.options.windowGeometry.height +
-                    " · (" + root.options.windowGeometry.x + ", " + root.options.windowGeometry.y + ")"
+            text: root.geometry.width + "×" + root.geometry.height +
+                    " · (" + root.geometry.x + ", " + root.geometry.y + ")"
             font.pixelSize: 14
             font.weight: Font.Medium
             color: Material.foreground

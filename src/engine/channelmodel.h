@@ -2,10 +2,11 @@
 
 #include <tbb_patched.hpp>
 
+#include <QHash>
 #include <QCameraDevice>
 #include <QAbstractListModel>
 
-#include <engine/channelinfo.hpp>
+#include <engine/channel.hpp>
 
 namespace MTGS {
 
@@ -19,7 +20,7 @@ public:
         DeviceRole,
     };
 
-    explicit ChannelModel(tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> &channel, QObject *parent = nullptr);
+    explicit ChannelModel(QHash<QString, Channel*> &channel, QObject *parent = nullptr);
 
     // QAbstractItemModel interface
     int rowCount(const QModelIndex &parent) const override;
@@ -32,7 +33,7 @@ public slots:
     void channelDeleted(const ChannelOptions &options);
 
 private:
-    tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> &m_channel;
+    QHash<QString, Channel*> &m_channel;
 };
 
 } // namespace MTGS

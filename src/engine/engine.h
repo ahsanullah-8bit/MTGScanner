@@ -4,16 +4,18 @@
 
 #include <tbb_patched.hpp>
 
+#include <QList>
+#include <QHash>
+#include <QTimer>
 #include <QObject>
 #include <QString>
-#include <QHash>
 #include <QVideoSink>
 #include <QSettings>
 #include <QSharedPointer>
 #include <QCameraDevice>
 
 #include <camera/cameracapture.h>
-#include <engine/channelinfo.hpp>
+#include <engine/channel.hpp>
 #include <engine/channelmodel.h>
 
 namespace MTGS {
@@ -21,24 +23,20 @@ namespace MTGS {
 class EngineWorker : public QObject {
     Q_OBJECT
 public:
-    EngineWorker(tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> &channels, QObject *parent = nullptr);
+    EngineWorker(QObject *parent = nullptr);
     virtual ~EngineWorker();
 
 public slots:
     void init();
-    void saveToSettings();
-    void loadFromSettings();
-    void addChannel(const MTGS::ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int channelStatus = 0, QScreen *screen = nullptr);
+    void addChannel(QSharedPointer<ChannelRaw> channel);
     void deleteChannel(const MTGS::ChannelOptions &options);
-    void startChannel(const QString &channelId);
-    void stopChannel(const QString &channelId);
+    void onChannelErrorOccurred(const QString &channelId, QCamera::Error error, const QString &errorStr);
+    void onChannelActiveChanged(const QString &channelId, bool active);
 
 signals:
     void engineLoaded(bool loaded = true);
-    void channelAdded(const MTGS::ChannelOptions &channelOptions);
+    void channelReady(const MTGS::ChannelOptions &options);
     void channelDeleted(const MTGS::ChannelOptions &options);
-    void channelStarted(bool started = true);
-    void channelStopped(bool stopped = true);
     void sendFrameToMainThread(const MTGS::FramePtr& frame);
 
 private:
@@ -47,12 +45,14 @@ private:
     QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<tf::continue_msg>>> m_frameDistributor;
     QSharedPointer<tf::function_node<FramePtr>> m_uiNotifier;
 
-    tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> &m_channels;
+    tbb::concurrent_hash_map<QString, QSharedPointer<ChannelRaw>> m_channels;
 };
 
 class Engine : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool engineLoaded READ isEngineLoaded WRITE setEngineLoaded NOTIFY engineLoaded FINAL)
+    Q_PROPERTY(QObject* currentChannel READ currentChannel WRITE setCurrentChannel NOTIFY currentChannelChanged FINAL)
+    Q_PROPERTY(QList<QCameraDevice> availableCameras READ availableCameras NOTIFY availableCamerasChanged FINAL)
 public:
     enum ChannelStatus {
         Unknown,
@@ -69,18 +69,24 @@ public:
     ~Engine();
     QSharedPointer<ChannelModel> createSharedChannelModel();
     bool isEngineLoaded() const;
-    Q_INVOKABLE QString createChannelId() const;
-    Q_INVOKABLE ChannelOptions createChannelOptions() const;
-    Q_INVOKABLE ChannelOptions channelOptions(const QString &channelId) const;
-    Q_INVOKABLE QObject *channelMetrics(const QString &channelId) const;
+    Q_INVOKABLE QObject *createChannel();
+    Q_INVOKABLE void destroyChannel(QObject *channel);
+    Q_INVOKABLE QObject *channel(const QString &channelId);
+    QObject *currentChannel();
+    QList<QCameraDevice> availableCameras() const;
 
 public slots:
+    void saveToSettings();
+    void loadFromSettings();
     void receiveFrameNotification(const MTGS::FramePtr& frame);
-    void addChannel(const ChannelOptions &channelOptions, QVideoSink *videoSink = nullptr, int channelStatus = 0, QScreen *screen = nullptr);
+    void addChannel(QObject *channelObj, int status = ChannelStatus::Unknown, QScreen *screen = nullptr);
     void deleteChannel(const MTGS::ChannelOptions &options);
     void startChannel(const QString &channelId);
     void stopChannel(const QString &channelId);
+    void setCurrentChannel(QObject *channel);
+    void setCurrentChannelById(const QString &channelId);
     void registerChannelOutSink(const QString &channelId, QVideoSink *videoSink);
+    void unRegisterChannelOutSink(const QString &channelId);
 
 signals:
     void engineLoaded(bool loaded = true);
@@ -88,6 +94,8 @@ signals:
     void channelDeleted(const MTGS::ChannelOptions &options);
     void channelStarted(bool started = true);
     void channelStopped(bool stopped = true);
+    void currentChannelChanged();
+    void availableCamerasChanged();
 
 private:
     void setEngineLoaded(bool loaded);
@@ -98,7 +106,12 @@ private:
         EngineWorker *worker;
         QThread *thread;
     } m_engine;
-    tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> m_channels;
+
+    Channel *m_currentChannel = nullptr;
+    QHash<QString, Channel*> m_channels;
+    QList<QCameraDevice> m_availableCameras;
+
+    QTimer *m_metricsTimer = nullptr;
 };
 
 } // namespace MTGS

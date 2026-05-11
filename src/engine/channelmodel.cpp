@@ -2,7 +2,7 @@
 
 namespace MTGS {
 
-ChannelModel::ChannelModel(tbb::concurrent_hash_map<QString, QSharedPointer<ChannelInfo>> &channel, QObject *parent)
+ChannelModel::ChannelModel(QHash<QString, Channel*> &channel, QObject *parent)
     : QAbstractListModel(parent), m_channel(channel) 
 {}
 
@@ -19,17 +19,17 @@ QVariant ChannelModel::data(const QModelIndex &index, int role) const
 
     auto it = m_channel.cbegin();
     std::advance(it, index.row());
-    const auto &channelInfo = it->second;
+    const auto &channel = it.value();
     
     switch (role) {
         case IdRole:
-            return it->first;
+            return it.key();
         case NameRole:
-            return channelInfo->channelOptions.name;
+            return channel->options().name;
         case StatusRole:
-            return channelInfo->metrics->status();
+            return channel->metrics()->status();
         case DeviceRole:
-            return QVariant::fromValue(channelInfo->channelOptions.cameraDevice);
+            return QVariant::fromValue(channel->options().cameraDevice);
         default:
             return QVariant();
     }

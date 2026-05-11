@@ -7,16 +7,12 @@ import MTGScanner.Engine
 Pane {
     id: root
 
-    property var metrics
-
-    readonly property var statusData: [
-        { name: "Initializing", color: "#95a5a6" },
-        { name: "Starting",     color: "#f1c40f" },
-        { name: "Running",      color: "#2ecc71" },
-        { name: "Stopping",     color: "#7f8c8d" },
-        { name: "Stopped",      color: "#e74c3c" },
-        { name: "Errored",      color: "#34495e"}
-    ]
+    property int status: 0 // Unknown
+    property color statusColor: "red"
+    property int fps: -1
+    property int captureFps: -1
+    property int skippedFps: -1
+    property int visibleCards: -1
 
     RowLayout {
         anchors.fill: parent
@@ -33,10 +29,10 @@ Pane {
         Label {
             Layout.alignment: Qt.AlignVCenter
 
-            text: root.metrics ? Qt.enumValueToString(Engine.ChannelStatus, root.metrics.status) : "Uknown"
+            text: Qt.enumValueToString(Engine.ChannelStatus, root.status)
             font.pixelSize: 14
             font.weight: Font.Medium
-            color: root.metrics ? root.metrics.statusColor : "red"
+            color: root.statusColor
         }
 
         // Separator
@@ -51,7 +47,7 @@ Pane {
         Label {
             Layout.alignment: Qt.AlignVCenter
 
-            text: "FPS: " + (root.metrics ? root.metrics.fps : 0)
+            text: "FPS: " + root.fps
             font.pixelSize: 14
             opacity: 0.5
         }
@@ -68,7 +64,7 @@ Pane {
         Label {
             Layout.alignment: Qt.AlignVCenter
 
-            text: "Capture FPS: " + (root.metrics ? root.metrics.captureFps : 0)
+            text: "Capture FPS: " + root.captureFps
             font.pixelSize: 14
             opacity: 0.5
         }
@@ -86,7 +82,7 @@ Pane {
         Label {
             Layout.alignment: Qt.AlignVCenter
 
-            text: "Skipped FPS: " + (root.metrics ? root.metrics.skippedFps : 0)
+            text: "Skipped FPS: " + root.skippedFps
             font.pixelSize: 14
             opacity: 0.5
         }
@@ -103,7 +99,7 @@ Pane {
         Label {
             Layout.alignment: Qt.AlignVCenter
 
-            text: "Cards Visible: " + (root.metrics ? root.metrics.visibleCards : 0)
+            text: "Cards Visible: " + root.visibleCards
             font.pixelSize: 14
             opacity: 0.5
         }

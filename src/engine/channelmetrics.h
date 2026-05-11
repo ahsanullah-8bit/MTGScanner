@@ -2,18 +2,21 @@
 
 #include <QObject>
 #include <QColor>
+#include <QTimer>
 #include <QAtomicInteger>
+
+#include <engine/framespersecond.hpp>
 
 namespace MTGS {
     
 class ChannelMetrics : public QObject {
     Q_OBJECT
-    Q_PROPERTY(int status READ status WRITE setStatus NOTIFY statusChanged FINAL)
-    Q_PROPERTY(QColor statusColor READ statusColor NOTIFY statusColorChanged FINAL)
-    Q_PROPERTY(int fps READ fps WRITE setFps NOTIFY fpsChanged FINAL)
-    Q_PROPERTY(int captureFps READ captureFps WRITE setCaptureFps NOTIFY captureFpsChanged FINAL)
-    Q_PROPERTY(int skippedFps READ skippedFps WRITE setSkippedFps NOTIFY skippedFpsChanged FINAL)
-    Q_PROPERTY(int visibleCards READ visibleCards WRITE setVisibleCards NOTIFY visibleCardsChanged FINAL)
+    Q_PROPERTY(int status READ status NOTIFY fireMetricsUpdate FINAL)
+    Q_PROPERTY(QColor statusColor READ statusColor NOTIFY fireMetricsUpdate FINAL)
+    Q_PROPERTY(int fps READ fps NOTIFY fireMetricsUpdate FINAL)
+    Q_PROPERTY(int captureFps READ captureFps NOTIFY fireMetricsUpdate FINAL)
+    Q_PROPERTY(int skippedFps READ skippedFps NOTIFY fireMetricsUpdate FINAL)
+    Q_PROPERTY(int visibleCards READ visibleCards NOTIFY fireMetricsUpdate FINAL)
 
 public:
     explicit ChannelMetrics(QObject *parent = nullptr);
@@ -25,26 +28,21 @@ public:
     int visibleCards() const;
 
 public slots:
-    void setStatus(int);
-    void setFps(int);
-    void setCaptureFps(int);
-    void setSkippedFps(int);
-    void setVisibleCards(int);
+    void setStatus(QAtomicInt *);
+    void setFps(FramesPerSecond *);
+    void setCaptureFps(FramesPerSecond *);
+    void setSkippedFps(FramesPerSecond *);
+    void setVisibleCards(QAtomicInt *);
 
 signals:
-    void statusChanged(int);
-    void statusColorChanged();
-    void fpsChanged(int);
-    void captureFpsChanged(int);
-    void skippedFpsChanged(int);
-    void visibleCardsChanged(int);
+    void fireMetricsUpdate();
 
 private:
-    QAtomicInt m_status = 0; // Which should be Unknown/Non-valid state.
-    QAtomicInt m_fps;
-    QAtomicInt m_captureFps;
-    QAtomicInt m_skippedFps;
-    QAtomicInt m_visibleCards;
+    QAtomicInt *m_status = nullptr;
+    FramesPerSecond *m_fps = nullptr;
+    FramesPerSecond *m_captureFps = nullptr;
+    FramesPerSecond *m_skippedFps = nullptr;
+    QAtomicInt *m_visibleCards = nullptr;
 };
 
 }

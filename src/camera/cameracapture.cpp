@@ -2,74 +2,38 @@
 
 namespace MTGS {
 
-namespace tflow = tbb::flow;
+namespace tf = tbb::flow;
 
 CameraCapture::CameraCapture(const QString &channelId,
-    const QCameraDevice &device,
-    tflow::async_node<tflow::continue_msg, FramePtr>::gateway_type &gateway,
-    QSharedPointer<ChannelMetrics> metrics,
-    QObject* parent)
+                            const QString &cameraId,
+                            FramesPerSecond &fps,
+                            QObject* parent)
     : QObject(parent)
     , m_channelId(channelId)
-    , m_cameraDevice(device)
-    , m_gateway(gateway)
-    , m_metrics(metrics)
+    , m_cameraId(cameraId)
+    , m_fps(fps)
 {}
 
-CameraCapture::~CameraCapture()
+void CameraCapture::setGateway(tf::async_node<tf::continue_msg, FramePtr>::gateway_type *gateway)
 {
-    m_camera->stop();
+    m_gateway = gateway;
 }
 
-QVideoSink *CameraCapture::videoSink()
+void CameraCapture::onVideoFrameChanged(const QVideoFrame &frame)
 {
-    return m_captureSession->videoSink();
-}
+    QImage img = frame.toImage().convertToFormat(QImage::Format_BGR888);
+    cv::Mat mat(img.height(), img.width(), CV_8UC3, const_cast<uchar*>(img.bits()), img.bytesPerLine());
 
-QCameraDevice CameraCapture::cameraDevice() const
-{
-    return m_cameraDevice;
-}
+    FramePtr f(new Frame{});
+    f->mat = mat.clone();
+    f->sequenceId = m_frameSequenceCount++;
+    f->channelId = m_channelId;
+    f->cameraId = m_cameraId;
+    f->timestamp = QTime::currentTime();
 
-void CameraCapture::init()
-{
-    m_camera = new QCamera(m_cameraDevice, this);
-    m_captureSession = new QMediaCaptureSession(this);
-    m_captureSession->setCamera(m_camera);
-    m_captureSession->setVideoSink(new QVideoSink(this));
-
-    m_fps.start();
-
-    connect(m_captureSession->videoSink(), &QVideoSink::videoFrameChanged, 
-    [this](const QVideoFrame &frame) {        
-        QImage img = frame.toImage().convertToFormat(QImage::Format_BGR888);
-        cv::Mat mat(img.height(), img.width(), CV_8UC3, const_cast<uchar*>(img.bits()), img.bytesPerLine());
-
-        FramePtr f(new Frame{});
-        f->mat = mat.clone();
-        f->sequenceId = m_frameSequenceCount++;
-        f->channelId = m_channelId;
-        f->cameraId = m_cameraDevice.id();
-        f->timestamp = QTime::currentTime();
-
-        m_gateway.try_put(f);
-        m_fps.update();
-        m_metrics->setCaptureFps(m_fps.fps());
-    });
-    connect(m_camera, &QCamera::errorOccurred, this, &CameraCapture::errorOccurred);
-    connect(m_camera, &QCamera::activeChanged, this, &CameraCapture::activeChanged);
-}
-
-void CameraCapture::start()
-{
-    m_camera->start();
-}
-
-void CameraCapture::stop()
-{
-    m_camera->stop();
+    if (m_gateway)
+        m_gateway->try_put(f);
+    m_fps.update();
 }
 
 }
-
-#include "moc_cameracapture.cpp"

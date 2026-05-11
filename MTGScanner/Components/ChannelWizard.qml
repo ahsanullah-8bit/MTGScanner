@@ -13,19 +13,14 @@ Dialog {
     property int currentStep: 0
     readonly property int stepCount: 3
 
+    property alias videoOutput: videoOutput
+
+    signal cancelClicked()
+    signal createChannelClicked()
+
     title: "Add Scan Channel"
     modal: true
     standardButtons: Dialog.NoButton
-
-    width: 650
-    height: 550
-    x: parent.x + (parent.width / 2 - width / 2)
-    y: parent.y + (parent.height / 2 - height / 2)
-
-    Component.onCompleted: {
-        dialog.channel = Engine.createChannel()
-        dialog.channel.captureSession.setVideoOutput(videoOutput)
-    }
 
     // Wizard page content
     Item {
@@ -53,13 +48,16 @@ Dialog {
                 currentIndex: 0
                 Material.foreground: Material.foreground
                 onCurrentTextChanged: {
-                    if (dialog.channel.camera.active)
-                        dialog.channel.camera.stop()
+                    if (channel === null)
+                        return
+
+                    if (channel.camera.active)
+                        channel.camera.stop()
 
                     var selectedCamera = cameraCombo.model[currentIndex]
-                    dialog.channel.options.cameraDevice = selectedCamera
-                    dialog.channel.camera.cameraDevice = selectedCamera
-                    dialog.channel.camera.start()
+                    channel.options.cameraDevice = selectedCamera
+                    channel.camera.cameraDevice = selectedCamera
+                    channel.camera.start()
                 }
             }
             // Camera Preview
@@ -98,7 +96,7 @@ Dialog {
             }
 
             // Close & Open the camera based on the page.
-            onVisibleChanged: !visible ? dialog.channel.camera.stop() : dialog.channel.camera.start()
+            // onVisibleChanged: !visible ? dialog.channel.camera.stop() : dialog.channel.camera.start()
         }
 
         // Step 2: Channel name & detection settings
@@ -121,9 +119,13 @@ Dialog {
                 Layout.alignment: Qt.AlignLeft | Qt.AlignTop
 
                 placeholderText: "Channel Name"
-                text: dialog.channel.options.name
+                text: channel !== null ? channel.options.name : text
 
-                onTextEdited: dialog.channel.options.name = text
+                onTextEdited: {
+                    if (channel === null)
+                        return
+                    channel.options.name = text
+                }
             }
             Label {
                 text: "Active Filters"
@@ -141,7 +143,7 @@ Dialog {
                     delegate: Button {
                         text: modelData
                         checkable: true
-                        checked: dialog.channel.options.filters.indexOf(modelData) >= 0
+                        checked: channel !== null && channel.options.filters.indexOf(modelData) >= 0
                         flat: true
                         // Toggle filter in the array
                         onClicked: {
@@ -161,7 +163,8 @@ Dialog {
                             // TODO: initialize activeFilters (Rare+ and Foil Only default checked)
                             if (modelData === "Rare+" || modelData === "Foil Only") {
                                 checked = true;
-                                dialog.channel.options.filters.push(modelData);
+                                if (channel !== null)
+                                    channel.options.filters.push(modelData);
                             }
                         }
                     }
@@ -172,7 +175,7 @@ Dialog {
                 Layout.alignment: Qt.AlignLeft | Qt.AlignTop
                 spacing: 12
 
-                property int threshold: Math.floor(dialog.channel.options.detectionThreshold)
+                property int threshold: channel ? Math.floor(channel.options.detectionThreshold) : 0
                 Label {
                     text: "Detection Threshold: " + parent.threshold
                     color: Material.foreground
@@ -183,8 +186,13 @@ Dialog {
                     to: 100
                     stepSize: 1
                     value: parent.threshold
-                    onMoved: dialog.channel.options.detectionThreshold = value
+
                     Layout.fillWidth: true
+
+                    onMoved: {
+                        if (!channel) return
+                        channel.options.detectionThreshold = value
+                    }
                 }
             }
             Item { Layout.fillHeight: true }
@@ -212,8 +220,11 @@ Dialog {
                     id: outputNameField
                     Layout.fillWidth: true
                     placeholderText: "Window Name"
-                    text: dialog.channel.options.windowName
-                    onTextEdited: dialog.channel.options.windowName = text
+                    text: channel ? channel.options.windowName : text
+                    onTextEdited: {
+                        if (!channel) return
+                        channel.options.windowName = text
+                    }
                 }
 
                 // Height x Width
@@ -228,8 +239,13 @@ Dialog {
                             id: outputXSpin
                             from: 0
                             to: 7680
-                            value: dialog.channel.options.windowGeometry.x
-                            onValueModified: dialog.channel.options.windowGeometry.x = value
+                            value: channel ? channel.options.windowGeometry.x : value
+                            onValueModified: {
+                                if (!channel)
+                                    return
+
+                                channel.options.windowGeometry.x = value
+                            }
                             editable: true
                         }
                     }
@@ -242,9 +258,13 @@ Dialog {
                             id: outputYSpin
                             from: 0
                             to: 4320
-                            value: dialog.channel.options.windowGeometry.y
-                            onValueModified: dialog.channel.options.windowGeometry.y = value
+                            value: channel ? channel.options.windowGeometry.y : value
                             editable: true
+                            onValueModified: {
+                                if (!channel)
+                                    return
+                                channel.options.windowGeometry.y = value
+                            }
                         }
                     }
 
@@ -256,9 +276,13 @@ Dialog {
                             id: outputWidthSpin
                             from: 100
                             to: 3840
-                            value: dialog.channel.options.windowGeometry.width
-                            onValueModified: dialog.channel.options.windowGeometry.width = value
                             editable: true
+                            value: channel ? channel.options.windowGeometry.width : value
+                            onValueModified: {
+                                if (!channel)
+                                    return
+                                channel.options.windowGeometry.width = value
+                            }
                         }
                     }
 
@@ -270,9 +294,13 @@ Dialog {
                             id: outputHeightSpin
                             from: 100
                             to: 2160
-                            value: dialog.channel.options.windowGeometry.height
-                            onValueModified: dialog.channel.options.windowGeometry.height = value
+                            value: channel ? channel.options.windowGeometry.height : value
                             editable: true
+                            onValueModified: {
+                                if (!channel)
+                                    return
+                                channel.options.windowGeometry.height = value
+                            }
                         }
                     }
                 }
@@ -284,7 +312,10 @@ Dialog {
                     Layout.columnSpan: 2
                     model: ["Primary Monitor", "Secondary Monitor (Right)", "Secondary Monitor (Left)"]
                     currentIndex: 0
-                    onCurrentTextChanged: dialog.channel.options.screenName = currentText
+                    onCurrentTextChanged: {
+                        if (channel !== null)
+                            channel.options.screenName = currentText
+                    }
                 }
             }
         }
@@ -299,13 +330,7 @@ Dialog {
 
             text: "Cancel"
             flat: true
-            onClicked: {
-                dialog.channel.camera.stop()
-                dialog.channel.captureSession.setVideoOutput(null)
-                Engine.destroyChannel(dialog.channel)
-                dialog.channel = null
-                dialog.reject()
-            }
+            onClicked: dialog.cancelClicked()
         }
         Item { Layout.fillWidth: true }
         Button {
@@ -327,12 +352,7 @@ Dialog {
                 if (currentStep < stepCount - 1) { // 0 -> 1 -> 2
                     currentStep++;
                 } else {
-                    // CRITICAL: Clear the device to release the system handle
-                    dialog.channel.camera.stop()
-                    dialog.channel.captureSession.setVideoOutput(null)
-
-                    Engine.addChannel(dialog.channel)
-                    dialog.accept();
+                    dialog.createChannelClicked()
                 }
             }
         }

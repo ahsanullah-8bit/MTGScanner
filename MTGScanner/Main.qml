@@ -55,7 +55,7 @@ ApplicationWindow {
         visible: window.showDrawer
         channelModel: ChannelsModel // A singleton
 
-        onAddChannelClicked: channelWizardLoader.active = true
+        onAddChannelClicked: channelWiz.open()
         onDeleteChannelClicked: (channel) => {
             deleteDialog.channelOptions = channel.options
             deleteDialog.open()
@@ -70,21 +70,65 @@ ApplicationWindow {
     }
     
     // Channel Wizard Loader
-    Loader {
-        id: channelWizardLoader
-        active: false
-        asynchronous: true
-        sourceComponent: channelWizardComponent
-        onLoaded: {
-            item.x = (parent.width - item.width) / 2
-            item.y = (parent.height - item.height) / 2
-            item.open()
+    // Loader {
+    //     id: channelWizardLoader
+    //     active: false
+    //     asynchronous: true
+    //     sourceComponent: channelWizardComponent
+    //     onLoaded: {
+    //         item.x = (parent.width - item.width) / 2
+    //         item.y = (parent.height - item.height) / 2
+    //         item.open()
+    //     }
+    // }
+    // Component {
+    //     id: channelWizardComponent
+    // }
+    ChannelWizard {
+        id: channelWiz
+
+        x: (parent.width - width) / 2
+        y: (parent.height - height) / 2
+        width: 650
+        height: 550
+
+        Component.onCompleted: {
+            channel = Engine.createChannel()
+            console.log(channel.options.id)
+            channel.captureSession.setVideoOutput(channelWiz.videoOutput)
         }
-    }
-    Component {
-        id: channelWizardComponent
-        ChannelWizard {
-            onClosed: channelWizardLoader.active = false
+
+        onCurrentStepChanged: {
+            if (channel !== null)
+                return
+
+            if (currentStep === 0) {
+                if (!channel.camera.active)
+                    channel.camera.start()
+            } else {
+                if (channel.camera.active)
+                    channel.camera.stop()
+            }
+        }
+
+        onCancelClicked: {
+            if (channel.camera.active)
+                channel.camera.stop()
+
+            channel.captureSession.setVideoOutput(null)
+            Engine.destroyChannel(channel)
+            channel = null
+            reject()
+        }
+
+        onCreateChannelClicked: {
+            // CRITICAL: Clear the device to release the system handle
+            channel.camera.stop()
+            channel.captureSession.setVideoOutput(null)
+
+            Engine.addChannel(channel)
+            channel = null
+            accept();
         }
     }
 

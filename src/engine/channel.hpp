@@ -106,7 +106,7 @@ inline void Channel::setOutVideoSink(QVideoSink *outVideoSink) {
 }
 
 inline void Channel::setOptions(const ChannelOptions &options) {
-    if (m_options == options) return; // Uses the operator== we wrote earlier
+    if (m_options == options) return;
     m_options = options;
     emit optionsChanged();
 }

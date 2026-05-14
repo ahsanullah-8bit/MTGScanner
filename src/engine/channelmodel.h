@@ -1,5 +1,6 @@
 #pragma once
 
+#include <qtmetamacros.h>
 #include <tbb_patched.hpp>
 
 #include <QHash>
@@ -16,11 +17,10 @@ public:
     enum CameraRoles {
         IdRole = Qt::UserRole + 1,
         NameRole,
-        StatusRole,
         DeviceRole,
     };
 
-    explicit ChannelModel(QHash<QString, Channel*> &channel, QObject *parent = nullptr);
+    explicit ChannelModel(QObject *parent = nullptr);
 
     // QAbstractItemModel interface
     int rowCount(const QModelIndex &parent) const override;
@@ -33,7 +33,7 @@ public slots:
     void channelDeleted(const ChannelOptions &options);
 
 private:
-    QHash<QString, Channel*> &m_channel;
+    QList<ChannelOptions> m_channels;
 };
 
 } // namespace MTGS

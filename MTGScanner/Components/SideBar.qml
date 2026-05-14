@@ -7,10 +7,10 @@ import MTGScanner.Engine
 Drawer {
     id: root
 
-    property alias currentIndex: channelList.currentIndex
+    property string activeChannelId: ""
     property alias channelModel: channelList.model
     signal addChannelClicked()
-    signal deleteChannelClicked(channel: var)
+    signal deleteChannelClicked(id: string)
 
     Material.roundedScale: Material.SmallScale
 
@@ -35,33 +35,22 @@ Drawer {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
+            highlightFollowsCurrentItem: true
             delegate: ItemDelegate {
                 id: channelDelegate
                 width: ListView.view.width
                 height: 60
-
-                highlighted: index === ListView.view.currentIndex
+                horizontalPadding: 12
 
                 contentItem: Item {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-
                     RowLayout {
                         anchors.fill: parent
                         spacing: 12
 
-                        Rectangle {
-                            Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
-
-                            width: 12; height: 12; radius: 6
-                            color: model.status === Engine.Running ? Material.accent
-                                                    : Material.color(Material.Grey, Material.Shade400)
-                        }
                         Label {
                             Layout.alignment: Qt.AlignVCenter
 
-                            text: model.name
+                            text: (index + 1) + ". " + model.name
                             font: channelDelegate.font
                         }
                         Item { Layout.fillHeight: true; Layout.fillWidth: true } // spacer
@@ -73,14 +62,24 @@ Drawer {
                             icon.source: "qrc:/qt/qml/MTGScanner/icons/trash-2.svg"
                             opacity: 0.6
                             visible: channelDelegate.hovered
-                            onClicked: root.deleteChannelClicked(Engine.channel(model.id))
+                            onClicked: root.deleteChannelClicked(model.id)
                         }
                     }
                 }
 
                 onClicked: {
-                    Engine.setCurrentChannelById(model.id)
+                    activeChannelId = model.id
                     channelList.currentIndex = index
+                }
+            }
+
+            onCountChanged: {
+                if (count === 0) {
+                    activeChannelId = ""
+                } else if (activeChannelId === "" || !Engine.channelExists(activeChannelId)) {
+                    var firstChannel = Engine.channelAtIndex(0)
+                    if (firstChannel)
+                        activeChannelId = firstChannel.options.id
                 }
             }
         }

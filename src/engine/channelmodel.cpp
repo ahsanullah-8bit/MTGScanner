@@ -1,35 +1,33 @@
 #include "channelmodel.h"
+#include <qabstractitemmodel.h>
+#include <qvariant.h>
 
 namespace MTGS {
 
-ChannelModel::ChannelModel(QHash<QString, Channel*> &channel, QObject *parent)
-    : QAbstractListModel(parent), m_channel(channel) 
+ChannelModel::ChannelModel(QObject *parent)
+    : QAbstractListModel(parent)
 {}
 
 int ChannelModel::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    return static_cast<int>(m_channel.size());
+    return static_cast<int>(m_channels.size());
 }
 
 QVariant ChannelModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() >= static_cast<int>(m_channel.size()))
+    if (!index.isValid() || index.row() >= static_cast<int>(m_channels.size()))
         return QVariant();
 
-    auto it = m_channel.cbegin();
-    std::advance(it, index.row());
-    const auto &channel = it.value();
+    const auto &options = m_channels.at(index.row());
     
     switch (role) {
         case IdRole:
-            return it.key();
+            return options.id;
         case NameRole:
-            return channel->options().name;
-        case StatusRole:
-            return channel->metrics()->status();
+            return options.name;
         case DeviceRole:
-            return QVariant::fromValue(channel->options().cameraDevice);
+            return QVariant::fromValue(options.cameraDevice);
         default:
             return QVariant();
     }
@@ -40,7 +38,6 @@ QHash<int, QByteArray> ChannelModel::roleNames() const
     static QHash<int, QByteArray> roles {
         {IdRole, "id"},
         {NameRole, "name"},
-        {StatusRole, "status"},
         {DeviceRole, "device"}
     };
 
@@ -49,18 +46,20 @@ QHash<int, QByteArray> ChannelModel::roleNames() const
 
 void ChannelModel::channelAdded(const ChannelOptions &options)
 {
-    Q_UNUSED(options)
-    beginResetModel();
-    // ...
-    endResetModel();
+    int row = static_cast<int>(m_channels.size());
+    beginInsertRows(QModelIndex{}, row, row);
+    m_channels.append(options);
+    endInsertRows();
 }
 
 void ChannelModel::channelDeleted(const ChannelOptions &options)
 {
-    Q_UNUSED(options)
-    beginResetModel();
-    // ...
-    endResetModel();
+    int row = static_cast<int>(m_channels.indexOf(options));
+    if (row == -1) return;
+
+    beginRemoveRows(QModelIndex{}, row, row);
+    m_channels.removeAt(row);
+    endRemoveRows();
 }
 
 } // namespace MTGS

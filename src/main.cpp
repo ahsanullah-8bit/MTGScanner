@@ -13,6 +13,9 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationDomain("MadStudio.io");
     QCoreApplication::setApplicationName("MTGScanner");
 
+    MTGS::Engine mtgsEngine;
+    qmlRegisterSingletonInstance("MTGScanner.Engine", 0, 1, "Engine", &mtgsEngine);
+
     QQmlApplicationEngine engine;
     QObject::connect(
         &engine,
@@ -20,13 +23,6 @@ int main(int argc, char *argv[])
         &app,
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
-
-    MTGS::Engine mtgsEngine;
-    qmlRegisterSingletonInstance("MTGScanner.Engine", 0, 1, "Engine", &mtgsEngine);
-
-    QSharedPointer<MTGS::ChannelModel> channelsModel = mtgsEngine.createSharedChannelModel();
-    QQmlEngine::setObjectOwnership(channelsModel.data(), QQmlEngine::CppOwnership);
-    qmlRegisterSingletonInstance("MTGScanner.Engine", 0, 1, "ChannelsModel", channelsModel.data());
 
     engine.loadFromModule("MTGScanner", "Main");
 

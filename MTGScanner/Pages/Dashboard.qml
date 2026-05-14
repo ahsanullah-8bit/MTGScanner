@@ -24,10 +24,6 @@ Page {
         }
     }
 
-    background: Rectangle {
-        color: MTGScanner.backgroundColor
-    }
-
     Label {
         text: "No Channels yet. Please create one!"
         font.pixelSize: 16

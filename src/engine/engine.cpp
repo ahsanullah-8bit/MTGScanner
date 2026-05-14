@@ -1,4 +1,7 @@
 #include <algorithm>
+#include <iterator>
+#include <qloggingcategory.h>
+#include <qobject.h>
 #include <tuple>
 
 #include <QList>
@@ -20,7 +23,6 @@
 
 namespace MTGS {
 
-namespace tf = tbb::flow;
 using accessor = tbb::concurrent_hash_map<QString, QSharedPointer<ChannelRaw>>::accessor;
 using const_accessor = tbb::concurrent_hash_map<QString, QSharedPointer<ChannelRaw>>::const_accessor;
 
@@ -84,7 +86,8 @@ void EngineWorker::init()
     };
 
     auto ui_notifier_body = [this](const FramePtr &f) {
-        f->originalFrame = QVideoFrame(QImage(f->mat.data, f->mat.cols, f->mat.rows, f->mat.step, QImage::Format_BGR888).copy());
+        QImage img(f->mat.data, f->mat.cols, f->mat.rows, f->mat.step, QImage::Format_BGR888);
+        f->originalFrame = QVideoFrame(img.copy());
         
         QMetaObject::invokeMethod(this, "sendFrameToMainThread", Qt::AutoConnection, Q_ARG(FramePtr, f));
 
@@ -195,13 +198,17 @@ void EngineWorker::onChannelActiveChanged(const QString &channelId, bool active)
     qCDebug(worker_logger) << "Channel" << channel->options.name << static_cast<Engine::ChannelStatus>(channel->status.loadRelaxed());
 }
 
+
 // ------------------ Engine Implementation ------------------
 Q_STATIC_LOGGING_CATEGORY(engine_logger, "mtgs.engine")
 Engine::Engine(QObject *parent)
     : QObject(parent)
-    , m_availableCameras(QMediaDevices::videoInputs())
+    , m_cameraMngr(new CameraManager(this))
+    , m_availableCamerasModel(new AvailableCamerasModel(this))
     , m_metricsTimer(new QTimer(this))
+    , m_channelsModel(new ChannelModel(this))
 {
+    // Startup the EngineWorker
     auto thread = new QThread();
     auto worker = new EngineWorker();
     worker->moveToThread(thread);
@@ -211,68 +218,23 @@ Engine::Engine(QObject *parent)
 
     connect(worker, &EngineWorker::engineLoaded, this, &Engine::setEngineLoaded);
     connect(worker, &EngineWorker::sendFrameToMainThread, this, &Engine::receiveFrameNotification);
-    connect(worker, &EngineWorker::channelReady, this,
-        [this] (const MTGS::ChannelOptions &options) {
-            if (!m_channels.contains(options.id)) {
-                qCCritical(worker_logger) << "Failed to start camera after addition for channel" << options.name;
-                return;
-            }
-
-            auto channel = m_channels.value(options.id);
-            if (channel->metrics()->status() != Engine::Stopped) {
-                // Then it's probably Unknown
-                channel->camera()->start();
-            }
-
-            // Remove from the available cameras
-            m_availableCameras.removeIf([&options](const auto &device) { return device == options.cameraDevice; });
-            emit availableCamerasChanged();
-
-            // Set the current channel
-            if (!m_currentChannel) {
-                // It's a first channel
-                setCurrentChannel(channel);
-            }
-
-            connect(m_metricsTimer, &QTimer::timeout, channel->metrics(), &ChannelMetrics::fireMetricsUpdate);
-            emit channelAdded(options);
-        }
-    );
-    connect(worker, &EngineWorker::channelDeleted, this,
-        [this] (const MTGS::ChannelOptions &options) {
-            auto keys = m_channels.keys();
-            if (keys.size() == 2) {
-                if (keys.at(0) == options.id)
-                    setCurrentChannel(m_channels.value(keys.at(1)));
-                else
-                    setCurrentChannel(m_channels.value(keys.at(0)));
-            } else {
-                qsizetype indx = keys.indexOf(options.id);
-                if (indx + 1 < keys.size())
-                    setCurrentChannel(m_channels.value(keys.at(indx + 1)));
-                else
-                    setCurrentChannel(m_channels.value(keys.at(0)));
-            }
-
-            m_channels.remove(options.id);
-            emit channelDeleted(options);
-        }
-    );
+    connect(worker, &EngineWorker::channelReady, this, &Engine::onChannelReady);
+    connect(worker, &EngineWorker::channelDeleted, this, &Engine::onChannelDeleted);
 
     m_engine.worker = worker;
     m_engine.thread = thread;
     thread->start();
 
-    // Available inputs sync
-    QMediaDevices *d = new QMediaDevices(this);
-    connect(d, &QMediaDevices::videoInputsChanged,
-        [this]() {
-            m_availableCameras = QMediaDevices::videoInputs();
-            emit availableCamerasChanged();
-        }
-    );
+    // Connect CameraManager to the AvailableCamerasModel
+    m_availableCamerasModel->setCameraManager(m_cameraMngr);
 
+    // Connect channels model
+    connect(this, &Engine::channelAdded, m_channelsModel, &ChannelModel::channelAdded);
+    connect(this, &Engine::channelAboutToBeDeleted, m_channelsModel, &ChannelModel::channelDeleted);
+
+    // Load the saved channels
     loadFromSettings();
+
     m_metricsTimer->start(1000);
 }
 
@@ -284,18 +246,19 @@ Engine::~Engine()
     saveToSettings();
 }
 
-QSharedPointer<ChannelModel> Engine::createSharedChannelModel() 
-{
-    QSharedPointer<ChannelModel> model = QSharedPointer<ChannelModel>::create(m_channels, this);
-    connect(this, &Engine::channelAdded, model.data(), &ChannelModel::channelAdded);
-    connect(this, &Engine::channelDeleted, model.data(), &ChannelModel::channelDeleted);
-
-    return model;
-}
-
 bool Engine::isEngineLoaded() const
 {
     return m_engineLoaded;
+}
+
+ChannelModel* Engine::channelsModel() const
+{
+    return m_channelsModel;
+}
+
+AvailableCamerasModel* Engine::availableCamerasModel() const
+{
+    return m_availableCamerasModel;
 }
 
 QObject *Engine::createChannel()
@@ -308,6 +271,11 @@ QObject *Engine::createChannel()
     channel->setMetrics(new ChannelMetrics(channel));
 
     QQmlEngine::setObjectOwnership(channel, QQmlEngine::CppOwnership);
+
+    connect(channel, &Channel::destroyed, [id = channel->options().id] () {
+        qCCritical(engine_logger) << "Channel got destroyed, named" << id;
+    });
+
     return channel;
 }
 
@@ -315,6 +283,8 @@ void Engine::destroyChannel(QObject *channel)
 {
     if (!channel)
         return;
+
+    qCCritical(engine_logger) << "Destroy channel called for" << qobject_cast<Channel*>(channel)->options().id;
 
     channel->deleteLater();
 }
@@ -326,17 +296,33 @@ QObject *Engine::channel(const QString &channelId)
         return nullptr;
     }
 
-    return m_channels.value(channelId);
+    Channel *channel = m_channels.value(channelId);
+    QQmlEngine::setObjectOwnership(channel, QQmlEngine::CppOwnership);
+    return channel;
 }
 
-QObject *Engine::currentChannel()
+QObject *Engine::channelAtIndex(int index)
 {
-    return m_currentChannel;
+    auto it = m_channels.begin();
+    std::advance(it, index);
+    if (it == m_channels.end()) {
+        qCCritical(engine_logger) << QString("Requsted channel for a non existent index %1.").arg(index);
+        return nullptr;
+    }
+
+    Channel *channel = it.value();
+    QQmlEngine::setObjectOwnership(channel, QQmlEngine::CppOwnership);
+    return channel;
 }
 
-QList<QCameraDevice> Engine::availableCameras() const
+bool Engine::channelExists(const QString &id)
 {
-    return m_availableCameras;
+    return m_channels.contains(id);
+}
+
+CameraManager *Engine::cameraManager()
+{
+    return m_cameraMngr;
 }
 
 void Engine::saveToSettings()
@@ -387,11 +373,7 @@ void Engine::loadFromSettings()
         // Verify CameraDevice
         const QString camera_id = settings.value("cameraDeviceId").toString();
         const QString camera_desc = settings.value("cameraDeviceDesc").toString();
-        const auto cam_it = std::find_if(m_availableCameras.begin(), m_availableCameras.end(),
-            [&camera_id, &camera_desc] (const QCameraDevice &camera) {
-                return camera.id() == camera_id || camera.description() == camera_desc;
-            }
-        );
+        auto camera_opt = m_cameraMngr->findBy(camera_id, camera_desc);
 
         // Verify Screen
         options.screenSerialNo = settings.value("screenSerialNo").toString();
@@ -406,8 +388,8 @@ void Engine::loadFromSettings()
         QObject *channel_obj = createChannel();
         Channel *channel = qobject_cast<Channel*>(channel_obj);
 
-        if (cam_it != m_availableCameras.end()) {
-            options.cameraDevice = *cam_it;
+        if (camera_opt) {
+            options.cameraDevice = camera_opt.value();
             channel->camera()->setCameraDevice(options.cameraDevice);
         } else {
             channelStatus = ChannelStatus::Stopped;
@@ -444,6 +426,9 @@ void Engine::receiveFrameNotification(const FramePtr& frame)
 
 void Engine::addChannel(QObject *channelObj, int status, QScreen *screen)
 {
+    if (!channelObj)
+        return;
+
     Channel *channel = qobject_cast<Channel*>(channelObj);
     QSharedPointer<ChannelRaw> channel_raw(new ChannelRaw);
 
@@ -456,7 +441,7 @@ void Engine::addChannel(QObject *channelObj, int status, QScreen *screen)
     channel->metrics()->setStatus(&channel_raw->status);
     channel->metrics()->setVisibleCards(&channel_raw->visibleCards);
 
-    auto thread = new QThread();
+    auto *thread = new QThread();
     auto *capture = new CameraCapture(channel->options().id, channel->options().cameraDevice.id(), channel_raw->captureFps);
     connect(thread, &QThread::finished, capture, &QObject::deleteLater);
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
@@ -496,18 +481,14 @@ void Engine::deleteChannel(const ChannelOptions &options)
         return;
     }
 
+    // In case someone wants to opt-out
+    emit channelAboutToBeDeleted(options);
+
     auto *channel = m_channels.value(options.id);
     channel->camera()->stop();
 
+    // TODO: Maybe connect to the channel->camera()->activeChanged
     QMetaObject::invokeMethod(m_engine.worker, "deleteChannel", Q_ARG(ChannelOptions, options));
-
-    // Add the camera back to available cameras
-    if (QMediaDevices::videoInputs().contains(options.cameraDevice)) {
-        m_availableCameras.emplace_back(options.cameraDevice);
-        emit availableCamerasChanged();
-    }
-
-    m_channels.remove(options.id);
 }
 
 void Engine::startChannel(const QString &channelId)
@@ -520,6 +501,7 @@ void Engine::startChannel(const QString &channelId)
     auto channel = m_channels.value(channelId);
     if (channel->metrics()->status() != ChannelStatus::Running) {
         channel->camera()->start();
+        // EngineWoker will change the status
     }
 }
 
@@ -531,28 +513,10 @@ void Engine::stopChannel(const QString &channelId)
     }
 
     auto channel = m_channels.value(channelId);
-    if (channel->metrics()->status() != ChannelStatus::Stopped) {
+    if (channel->metrics()->status() != ChannelStatus::Stopped || channel->camera()->isActive()) {
         channel->camera()->stop();
+        // EngineWoker will change the status
     }
-}
-
-void Engine::setCurrentChannel(QObject *channel)
-{
-    if (m_currentChannel == channel)
-        return;
-
-    m_currentChannel = qobject_cast<Channel*>(channel);
-    emit currentChannelChanged();
-}
-
-void Engine::setCurrentChannelById(const QString &channelId)
-{
-    if (m_currentChannel->options().id == channelId
-        || !m_channels.contains(channelId))
-        return;
-
-    m_currentChannel = qobject_cast<Channel*>(m_channels.value(channelId));
-    emit currentChannelChanged();
 }
 
 void Engine::registerChannelOutSink(const QString &channelId, QVideoSink *videoSink)
@@ -571,6 +535,42 @@ void Engine::unRegisterChannelOutSink(const QString &channelId)
         return;
 
     m_channels.value(channelId)->setOutVideoSink(nullptr);
+}
+
+void Engine::onChannelReady(const ChannelOptions &options)
+{
+    if (!m_channels.contains(options.id)) {
+        qCCritical(worker_logger) << "Failed to start camera after addition for channel" << options.name;
+        return;
+    }
+
+    // Mark the camera
+    m_cameraMngr->setCameraInUse(options.cameraDevice, true);
+
+    auto channel = m_channels.value(options.id);
+    if (channel->metrics()->status() != Engine::Stopped) {
+        // Then it's probably Unknown
+        // channel->camera()->start();
+    }
+
+    connect(m_metricsTimer, &QTimer::timeout, channel->metrics(), &ChannelMetrics::fireMetricsUpdate);
+    emit channelAdded(options);
+}
+
+void Engine::onChannelDeleted(const ChannelOptions &options)
+{
+    Channel *channel = m_channels.take(options.id);
+    if (!channel) return;
+
+    // Mark the camera
+    connect(channel, &Channel::destroyed, 
+        [this, device = options.cameraDevice] () {
+            m_cameraMngr->setCameraInUse(device, false);
+        }
+    );
+    channel->deleteLater();
+
+    emit channelDeleted(options);
 }
 
 void Engine::setEngineLoaded(bool loaded) 

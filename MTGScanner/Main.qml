@@ -12,52 +12,30 @@ ApplicationWindow {
     visible: true
     title: qsTr("MTGScanner")
 
-    MTGScanner.theme: MTGScanner.Dark
-    color: MTGScanner.backgroundColor
-
     property bool showDrawer: true
-
-    header: ToolBar {
-        RowLayout {
-            anchors.fill: parent
-            anchors.leftMargin: 20
-            anchors.rightMargin: 20
-            spacing: 8
-
-            Label {
-                Layout.fillWidth: true
-
-                text: "MTGScanner"
-                font.pixelSize: 20
-                font.weight: Font.Medium
-            }
-
-            ToolButton {
-                Layout.fillHeight: true
-
-                icon.source: "qrc:/qt/qml/MTGScanner/icons/" + (false ? "pause.svg" : "play.svg")
-                opacity: 0.8
-                onClicked: console.log("Start All")
-            }
-        }
-    }
 
     SideBar {
         id: sidebar
 
         width: 256
-        height: window.height - header.height
-        topMargin: header.height
+        height: window.height
         edge: Qt.LeftEdge
         modal: !window.showDrawer
         interactive: !window.showDrawer
         position: window.showDrawer ? 1 : 0
         visible: window.showDrawer
-        channelModel: ChannelsModel // A singleton
+        channelModel: Engine.channelsModel
 
-        onAddChannelClicked: channelWiz.open()
-        onDeleteChannelClicked: (channel) => {
-            deleteDialog.channelOptions = channel.options
+        onAddChannelClicked: {
+            // channelWizardLoader.active = true
+            // channelWiz.channel = Engine.createChannel()
+            // channelWiz.channel.captureSession.videoOutput = channelWiz.videoOutput
+            channelWiz.open()
+        } 
+        onDeleteChannelClicked: (id) => {
+            let channel = Engine.channel(id)
+            if (channel)
+                deleteDialog.channelOptions = channel.options
             deleteDialog.open()
         }
     }
@@ -66,16 +44,17 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.leftMargin: window.showDrawer ? sidebar.width : undefined
 
-        channel: Engine.currentChannel
+        channel: sidebar.activeChannelId !== "" ? Engine.channel(sidebar.activeChannelId) : null
     }
     
     // Channel Wizard Loader
     // Loader {
     //     id: channelWizardLoader
     //     active: false
-    //     asynchronous: true
     //     sourceComponent: channelWizardComponent
     //     onLoaded: {
+    //         item.width = 650
+    //         item.height = 550
     //         item.x = (parent.width - item.width) / 2
     //         item.y = (parent.height - item.height) / 2
     //         item.open()
@@ -92,43 +71,42 @@ ApplicationWindow {
         width: 650
         height: 550
 
-        Component.onCompleted: {
-            channel = Engine.createChannel()
-            console.log(channel.options.id)
-            channel.captureSession.setVideoOutput(channelWiz.videoOutput)
-        }
+        closePolicy: Popup.NoAutoClose
+        availableCamerasModel: Engine.availableCamerasModel
 
         onCurrentStepChanged: {
-            if (channel !== null)
+            if (channel === null)
                 return
 
-            if (currentStep === 0) {
-                if (!channel.camera.active)
-                    channel.camera.start()
-            } else {
-                if (channel.camera.active)
-                    channel.camera.stop()
-            }
+            // if (currentStep === 0) {
+            //     if (!channel.camera.active)
+            //         channel.camera.start()
+            // } else {
+            //     if (channel.camera.active)
+            //         channel.camera.stop()
+            // }
         }
 
         onCancelClicked: {
-            if (channel.camera.active)
-                channel.camera.stop()
+            // if (channel.camera.active)
+            //     channel.camera.stop()
 
-            channel.captureSession.setVideoOutput(null)
+            // channel.captureSession.videoOutput = null
+            reject()
             Engine.destroyChannel(channel)
             channel = null
-            reject()
+            // channelWizardLoader.active = false
         }
 
         onCreateChannelClicked: {
             // CRITICAL: Clear the device to release the system handle
-            channel.camera.stop()
-            channel.captureSession.setVideoOutput(null)
+            // channel.camera.stop()
+            // channel.captureSession.videoOutput(null)
 
+            accept()
             Engine.addChannel(channel)
             channel = null
-            accept();
+            // channelWizardLoader.active = false
         }
     }
 

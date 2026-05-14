@@ -9,11 +9,13 @@ import MTGScanner.Engine
 Dialog {
     id: dialog
 
+    property alias availableCamerasModel: cameraCombo.model
     property var channel: null
     property int currentStep: 0
     readonly property int stepCount: 3
 
-    property alias videoOutput: videoOutput
+    // property alias videoOutput: videoOutput
+    onChannelChanged: console.log("Channel is" + channel)
 
     signal cancelClicked()
     signal createChannelClicked()
@@ -44,21 +46,20 @@ Dialog {
                 id: cameraCombo
                 Layout.fillWidth: true
                 textRole: "description"
-                model: Engine.availableCameras
                 currentIndex: 0
                 Material.foreground: Material.foreground
-                onCurrentTextChanged: {
-                    if (channel === null)
-                        return
+                // onCurrentTextChanged: {
+                //     if (channel === null || currentIndex < 0 || currentIndex >= cameraCombo.count)
+                //         return
 
-                    if (channel.camera.active)
-                        channel.camera.stop()
+                //     // if (channel.camera.active)
+                //     //     channel.camera.stop()
 
-                    var selectedCamera = cameraCombo.model[currentIndex]
-                    channel.options.cameraDevice = selectedCamera
-                    channel.camera.cameraDevice = selectedCamera
-                    channel.camera.start()
-                }
+                //     // var selectedCamera = cameraCombo.model[currentIndex]
+                //     // channel.options.cameraDevice = selectedCamera
+                //     // channel.camera.cameraDevice = selectedCamera
+                //     // channel.camera.start()
+                // }
             }
             // Camera Preview
             Rectangle {
@@ -89,10 +90,10 @@ Dialog {
                     }
                 }
 
-                VideoOutput {
-                    id: videoOutput
-                    anchors.fill: parent
-                }
+                // VideoOutput {
+                //     id: videoOutput
+                //     anchors.fill: parent
+                // }
             }
 
             // Close & Open the camera based on the page.
@@ -119,13 +120,13 @@ Dialog {
                 Layout.alignment: Qt.AlignLeft | Qt.AlignTop
 
                 placeholderText: "Channel Name"
-                text: channel !== null ? channel.options.name : text
+                text: "Channel"
 
-                onTextEdited: {
-                    if (channel === null)
-                        return
-                    channel.options.name = text
-                }
+                // onTextEdited: {
+                //     if (channel === null)
+                //         return
+                //     channel.options.name = text
+                // }
             }
             Label {
                 text: "Active Filters"
@@ -143,56 +144,61 @@ Dialog {
                     delegate: Button {
                         text: modelData
                         checkable: true
-                        checked: channel !== null && channel.options.filters.indexOf(modelData) >= 0
+                        // checked: channel && channel.options.filters.indexOf(modelData) >= 0
                         flat: true
                         // Toggle filter in the array
-                        onClicked: {
-                            let filters = dialog.channel.options.filters
-                            if (checked) {
-                                if (filters.indexOf(modelData) === -1)
-                                    filters.push(modelData);
-                            } else {
-                                var idx = filters.indexOf(modelData);
-                                if (idx >= 0) filters.splice(idx, 1);
-                            }
-                            dialog.channel.options.filters = filters;
-                        }
+                        // onClicked: {
+                        //     let filters = dialog.channel.options.filters
+                        //     if (checked) {
+                        //         if (filters.indexOf(modelData) === -1)
+                        //             filters.push(modelData);
+                        //     } else {
+                        //         var idx = filters.indexOf(modelData);
+                        //         if (idx >= 0) filters.splice(idx, 1);
+                        //     }
+                        //     dialog.channel.options.filters = filters;
+                        // }
                         Material.foreground: checked ? Material.accent : Material.hintTextColor
                         Material.background: "transparent"
-                        Component.onCompleted: {
-                            // TODO: initialize activeFilters (Rare+ and Foil Only default checked)
-                            if (modelData === "Rare+" || modelData === "Foil Only") {
-                                checked = true;
-                                if (channel !== null)
-                                    channel.options.filters.push(modelData);
-                            }
-                        }
+                        // Component.onCompleted: {
+                        //     // TODO: initialize activeFilters (Rare+ and Foil Only default checked)
+                        //     if (modelData === "Rare+" || modelData === "Foil Only") {
+                        //         checked = true;
+                        //         if (channel !== null)
+                        //             channel.options.filters.push(modelData);
+                        //     }
+                        // }
                     }
                 }
             }
             RowLayout {
+                id: detThreshLayout
+
+                // property int threshold: channel ? Math.floor(channel.options.detectionThreshold) : 0
+
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignLeft | Qt.AlignTop
                 spacing: 12
 
-                property int threshold: channel ? Math.floor(channel.options.detectionThreshold) : 0
                 Label {
-                    text: "Detection Threshold: " + parent.threshold
+                    text: "Detection Threshold: " + detThreshLayout.threshold
                     color: Material.foreground
                 }
                 Slider {
                     id: thresholdSlider
+
+
                     from: 0
                     to: 100
                     stepSize: 1
-                    value: parent.threshold
+                    value: 5
 
                     Layout.fillWidth: true
 
-                    onMoved: {
-                        if (!channel) return
-                        channel.options.detectionThreshold = value
-                    }
+                    // onMoved: {
+                    //     if (channel)
+                    //         channel.options.detectionThreshold = value
+                    // }
                 }
             }
             Item { Layout.fillHeight: true }
@@ -220,11 +226,11 @@ Dialog {
                     id: outputNameField
                     Layout.fillWidth: true
                     placeholderText: "Window Name"
-                    text: channel ? channel.options.windowName : text
-                    onTextEdited: {
-                        if (!channel) return
-                        channel.options.windowName = text
-                    }
+                    text: "Window 1"
+                    // onTextEdited: {
+                    //     if (channel)
+                    //         channel.options.windowName = text
+                    // }
                 }
 
                 // Height x Width
@@ -239,13 +245,11 @@ Dialog {
                             id: outputXSpin
                             from: 0
                             to: 7680
-                            value: channel ? channel.options.windowGeometry.x : value
-                            onValueModified: {
-                                if (!channel)
-                                    return
-
-                                channel.options.windowGeometry.x = value
-                            }
+                            value: 0
+                            // onValueModified: {
+                            //     if (channel)
+                            //         channel.options.windowGeometry.x = value
+                            // }
                             editable: true
                         }
                     }
@@ -258,13 +262,12 @@ Dialog {
                             id: outputYSpin
                             from: 0
                             to: 4320
-                            value: channel ? channel.options.windowGeometry.y : value
+                            value: 0
                             editable: true
-                            onValueModified: {
-                                if (!channel)
-                                    return
-                                channel.options.windowGeometry.y = value
-                            }
+                            // onValueModified: {
+                            //     if (channel)
+                            //         channel.options.windowGeometry.y = value
+                            // }
                         }
                     }
 
@@ -277,12 +280,11 @@ Dialog {
                             from: 100
                             to: 3840
                             editable: true
-                            value: channel ? channel.options.windowGeometry.width : value
-                            onValueModified: {
-                                if (!channel)
-                                    return
-                                channel.options.windowGeometry.width = value
-                            }
+                            value: 600
+                            // onValueModified: {
+                            //     if (channel)
+                            //         channel.options.windowGeometry.width = value
+                            // }
                         }
                     }
 
@@ -294,13 +296,12 @@ Dialog {
                             id: outputHeightSpin
                             from: 100
                             to: 2160
-                            value: channel ? channel.options.windowGeometry.height : value
+                            value: 400
                             editable: true
-                            onValueModified: {
-                                if (!channel)
-                                    return
-                                channel.options.windowGeometry.height = value
-                            }
+                            // onValueModified: {
+                            //     if (channel)
+                            //         channel.options.windowGeometry.height = value
+                            // }
                         }
                     }
                 }
@@ -312,10 +313,10 @@ Dialog {
                     Layout.columnSpan: 2
                     model: ["Primary Monitor", "Secondary Monitor (Right)", "Secondary Monitor (Left)"]
                     currentIndex: 0
-                    onCurrentTextChanged: {
-                        if (channel !== null)
-                            channel.options.screenName = currentText
-                    }
+                    // onCurrentTextChanged: {
+                    //     if (channel)
+                    //         channel.options.screenName = currentText
+                    // }
                 }
             }
         }
@@ -352,7 +353,8 @@ Dialog {
                 if (currentStep < stepCount - 1) { // 0 -> 1 -> 2
                     currentStep++;
                 } else {
-                    dialog.createChannelClicked()
+                    dialog.accept()
+                    // dialog.createChannelClicked()
                 }
             }
         }

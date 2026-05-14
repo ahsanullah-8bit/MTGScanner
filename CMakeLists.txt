@@ -13,8 +13,12 @@ qt_standard_project_setup(REQUIRES 6.8)
 qt_add_executable(${PROJECT_NAME}App
     src/main.cpp
 
+    src/camera/availablecamerasmodel.h
+    src/camera/availablecamerasmodel.cpp
     src/camera/cameracapture.h
     src/camera/cameracapture.cpp
+    src/camera/cameramanager.h
+    src/camera/cameramanager.cpp
     src/core/frame.hpp
     src/core/prediction.hpp
     src/engine/channel.hpp

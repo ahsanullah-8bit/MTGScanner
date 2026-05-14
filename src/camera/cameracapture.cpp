@@ -21,6 +21,9 @@ void CameraCapture::setGateway(tf::async_node<tf::continue_msg, FramePtr>::gatew
 
 void CameraCapture::onVideoFrameChanged(const QVideoFrame &frame)
 {
+    if (!frame.isValid())
+        return;
+
     QImage img = frame.toImage().convertToFormat(QImage::Format_BGR888);
     cv::Mat mat(img.height(), img.width(), CV_8UC3, const_cast<uchar*>(img.bits()), img.bytesPerLine());
 

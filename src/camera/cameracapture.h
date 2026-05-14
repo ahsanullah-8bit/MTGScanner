@@ -28,10 +28,8 @@ public:
 public slots:
     void setGateway(tbb::flow::async_node<tbb::flow::continue_msg, FramePtr>::gateway_type *gateway);
     void onVideoFrameChanged(const QVideoFrame &frame);
-
-signals:
-    void errorOccurred(QCamera::Error error, const QString &errorString);
-    void activeChanged(bool);
+    void onErrorOccurred(const QString &channelName, QCamera::Error error, const QString &errorString);
+    void onActiveChanged(const QString &channelName, bool isActive);
 
 private:
     QString m_channelId;

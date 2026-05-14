@@ -1,5 +1,7 @@
 #pragma once
 
+#include <qcontainerfwd.h>
+#include <qlist.h>
 #include <qobject.h>
 #include <qtmetamacros.h>
 #include <tuple>
@@ -24,38 +26,9 @@
 
 namespace MTGS {
 
-class EngineWorker : public QObject {
-    Q_OBJECT
-public:
-    EngineWorker(QObject *parent = nullptr);
-    virtual ~EngineWorker();
-
-public slots:
-    void init();
-    void addChannel(QSharedPointer<ChannelRaw> channel);
-    void deleteChannel(const MTGS::ChannelOptions &options);
-    void onChannelErrorOccurred(const QString &channelId, QCamera::Error error, const QString &errorStr);
-    void onChannelActiveChanged(const QString &channelId, bool active);
-
-signals:
-    void engineLoaded(bool loaded = true);
-    void channelReady(const MTGS::ChannelOptions &options);
-    void channelDeleted(const MTGS::ChannelOptions &options);
-    void sendFrameToMainThread(const MTGS::FramePtr& frame);
-
-private:
-    tf::graph m_graph;
-    QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<FramePtr, tf::continue_msg>>> m_processor;
-    QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<tf::continue_msg>>> m_frameDistributor;
-    QSharedPointer<tf::function_node<FramePtr>> m_uiNotifier;
-
-    tbb::concurrent_hash_map<QString, QSharedPointer<ChannelRaw>> m_channels;
-};
-
 // Engine
 class Engine : public QObject {
     Q_OBJECT
-    Q_PROPERTY(bool engineLoaded READ isEngineLoaded WRITE setEngineLoaded NOTIFY engineLoaded FINAL)
     Q_PROPERTY(MTGS::ChannelModel* channelsModel READ channelsModel CONSTANT)
     Q_PROPERTY(MTGS::AvailableCamerasModel* availableCamerasModel READ availableCamerasModel CONSTANT)
 public:
@@ -72,7 +45,6 @@ public:
 
     Engine(QObject *parent = nullptr);
     ~Engine();
-    bool isEngineLoaded() const;
     ChannelModel* channelsModel() const;
     AvailableCamerasModel* availableCamerasModel() const;
     Q_INVOKABLE QObject *createChannel();
@@ -94,7 +66,6 @@ public slots:
     void unRegisterChannelOutSink(const QString &channelId);
 
 signals:
-    void engineLoaded(bool loaded = true);
     void channelAdded(const MTGS::ChannelOptions &options);
     void channelAboutToBeDeleted(const MTGS::ChannelOptions &options);
     void channelDeleted(const MTGS::ChannelOptions &options);
@@ -102,26 +73,23 @@ signals:
     void channelStopped(bool stopped = true);
 
 private slots:
-    void onChannelReady(const MTGS::ChannelOptions &options);
-    void onChannelDeleted(const MTGS::ChannelOptions &options);
+    void initializeGraph();
 
 private:
-    void setEngineLoaded(bool loaded);
+    tf::graph m_graph;
+    QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<FramePtr, tf::continue_msg>>> m_processor;
+    QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<tf::continue_msg>>> m_frameDistributor;
+    QSharedPointer<tf::function_node<FramePtr>> m_uiNotifier;
 
-private:
-    bool m_engineLoaded = false;
-    struct {
-        EngineWorker *worker;
-        QThread *thread;
-    } m_engine;
+    tbb::concurrent_hash_map<QString, QSharedPointer<ChannelRaw>> m_rawChannels;
+    QHash<QString, Channel*> m_channels;
+    QList<QString> m_channelIdIndexMap;
 
     AvailableCamerasModel *m_availableCamerasModel = nullptr;
     ChannelModel *m_channelsModel = nullptr;
     CameraManager *m_cameraMngr = nullptr;
-    QHash<QString, Channel*> m_channels;
 
     QTimer *m_metricsTimer = nullptr;
-    QObject *ch;
 };
 
 } // namespace MTGS

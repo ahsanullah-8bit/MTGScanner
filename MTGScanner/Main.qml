@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls.Material
 import QtQuick.Layouts
+import QtMultimedia
 import MTGScanner.Components
 import MTGScanner.Pages
 import MTGScanner.Engine
@@ -27,7 +28,6 @@ ApplicationWindow {
         channelModel: Engine.channelsModel
 
         onAddChannelClicked: {
-            // channelWizardLoader.active = true
             // channelWiz.channel = Engine.createChannel()
             // channelWiz.channel.captureSession.videoOutput = channelWiz.videoOutput
             channelWiz.open()
@@ -47,22 +47,10 @@ ApplicationWindow {
         channel: sidebar.activeChannelId !== "" ? Engine.channel(sidebar.activeChannelId) : null
     }
     
-    // Channel Wizard Loader
-    // Loader {
-    //     id: channelWizardLoader
-    //     active: false
-    //     sourceComponent: channelWizardComponent
-    //     onLoaded: {
-    //         item.width = 650
-    //         item.height = 550
-    //         item.x = (parent.width - item.width) / 2
-    //         item.y = (parent.height - item.height) / 2
-    //         item.open()
-    //     }
-    // }
-    // Component {
-    //     id: channelWizardComponent
-    // }
+    MediaDevices {
+        id: mediads
+    }
+
     ChannelWizard {
         id: channelWiz
 
@@ -92,10 +80,9 @@ ApplicationWindow {
             //     channel.camera.stop()
 
             // channel.captureSession.videoOutput = null
-            reject()
             Engine.destroyChannel(channel)
             channel = null
-            // channelWizardLoader.active = false
+            reject()
         }
 
         onCreateChannelClicked: {
@@ -103,10 +90,9 @@ ApplicationWindow {
             // channel.camera.stop()
             // channel.captureSession.videoOutput(null)
 
-            accept()
             Engine.addChannel(channel)
             channel = null
-            // channelWizardLoader.active = false
+            accept()
         }
     }
 

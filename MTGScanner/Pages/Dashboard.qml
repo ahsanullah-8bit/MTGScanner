@@ -18,7 +18,7 @@ Page {
             Engine.unRegisterChannelOutSink(prevChannelId)
         }
 
-        if (channel !== null) {
+        if (!channel) {
             Engine.registerChannelOutSink(channel.options.id, videoCard.videoOutput.videoSink)
             prevChannelId = channel.options.id
         }

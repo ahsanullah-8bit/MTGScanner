@@ -15,7 +15,7 @@ Dialog {
     readonly property int stepCount: 3
 
     // property alias videoOutput: videoOutput
-    onChannelChanged: console.log("Channel is" + channel)
+    onChannelChanged: console.log("Channel is " + channel)
 
     signal cancelClicked()
     signal createChannelClicked()
@@ -46,7 +46,6 @@ Dialog {
                 id: cameraCombo
                 Layout.fillWidth: true
                 textRole: "description"
-                currentIndex: 0
                 Material.foreground: Material.foreground
                 // onCurrentTextChanged: {
                 //     if (channel === null || currentIndex < 0 || currentIndex >= cameraCombo.count)
@@ -95,9 +94,6 @@ Dialog {
                 //     anchors.fill: parent
                 // }
             }
-
-            // Close & Open the camera based on the page.
-            // onVisibleChanged: !visible ? dialog.channel.camera.stop() : dialog.channel.camera.start()
         }
 
         // Step 2: Channel name & detection settings
@@ -120,13 +116,12 @@ Dialog {
                 Layout.alignment: Qt.AlignLeft | Qt.AlignTop
 
                 placeholderText: "Channel Name"
-                text: "Channel"
+                text: channel ? channel.options.name : "Channel"
 
-                // onTextEdited: {
-                //     if (channel === null)
-                //         return
-                //     channel.options.name = text
-                // }
+                onTextEdited: {
+                    if (channel)
+                        channel.options.name = text
+                }
             }
             Label {
                 text: "Active Filters"
@@ -226,11 +221,11 @@ Dialog {
                     id: outputNameField
                     Layout.fillWidth: true
                     placeholderText: "Window Name"
-                    text: "Window 1"
-                    // onTextEdited: {
-                    //     if (channel)
-                    //         channel.options.windowName = text
-                    // }
+                    text: channel ? channel.options.name + " Output" : "Window 1"
+                    onTextEdited: {
+                        if (channel)
+                            channel.options.windowName = text
+                    }
                 }
 
                 // Height x Width
@@ -348,13 +343,11 @@ Dialog {
 
             text: currentStep < stepCount - 1 ? "Next →" : "Create Channel"
             highlighted: true
-            // DialogButtonBox.buttonRole: currentStep < stepCount ? DialogButtonBox.ActionRole : DialogButtonBox.AcceptRole
             onClicked: {
                 if (currentStep < stepCount - 1) { // 0 -> 1 -> 2
                     currentStep++;
                 } else {
-                    dialog.accept()
-                    // dialog.createChannelClicked()
+                    dialog.createChannelClicked()
                 }
             }
         }

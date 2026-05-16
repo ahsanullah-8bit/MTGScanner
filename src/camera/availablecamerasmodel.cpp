@@ -11,7 +11,9 @@ namespace MTGS {
 
 AvailableCamerasModel::AvailableCamerasModel(QObject *parent)
     : QAbstractListModel(parent)
-{}
+{
+    qRegisterMetaType<QCameraDevice>();
+}
 
 void AvailableCamerasModel::setCameraManager(CameraManager *manager)
 {
@@ -44,6 +46,7 @@ QVariant AvailableCamerasModel::data(const QModelIndex &index, int role) const
         case PhotoResolutions: return QVariant::fromValue(device.photoResolutions());
         case Position: return device.position();
         case VideoFormats: return QVariant::fromValue(device.videoFormats());
+        case Device: return QVariant::fromValue(device);
     }
 
     return QVariant{};
@@ -58,7 +61,8 @@ QHash<int, QByteArray> AvailableCamerasModel::roleNames() const
         {IsNull, "isnull"},
         {PhotoResolutions, "photores"},
         {Position, "pos"},
-        {VideoFormats, "vidformats"}
+        {VideoFormats, "vidformats"},
+        {Device, "device"}
     };
 
     return roles;

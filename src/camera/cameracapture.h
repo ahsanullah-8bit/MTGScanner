@@ -12,8 +12,8 @@
 #include <QSharedPointer>
 
 #include <core/frame.hpp>
-#include <engine/channelmetrics.h>
-#include <engine/framespersecond.hpp>
+#include <framespersecond.hpp>
+#include <channelmetrics.h>
 
 namespace MTGS {
 

@@ -21,14 +21,11 @@ qt_add_executable(${PROJECT_NAME}App
     src/camera/cameramanager.cpp
     src/core/frame.hpp
     src/core/prediction.hpp
-    src/engine/channel.hpp
-    src/engine/channelmetrics.h
-    src/engine/channelmetrics.cpp
+    src/engine/channelraw.hpp
     src/engine/channelmodel.h
     src/engine/channelmodel.cpp
     src/engine/engine.h
     src/engine/engine.cpp
-    src/engine/framespersecond.hpp
 )
 
 qt_add_resources(${CMAKE_PROJECT_NAME}App "configuration"
@@ -65,7 +62,6 @@ target_link_libraries(${PROJECT_NAME}App
     MTGScanner  # the static library, just for channeloptions.hpp
     MTGScannerplugin
     MTGScannerComponentsplugin
-    MTGScannerControlsplugin
 )
 
 include(GNUInstallDirs)

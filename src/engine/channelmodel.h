@@ -7,7 +7,7 @@
 #include <QCameraDevice>
 #include <QAbstractListModel>
 
-#include <engine/channel.hpp>
+#include <channel.hpp>
 
 namespace MTGS {
 

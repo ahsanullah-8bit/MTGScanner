@@ -10,7 +10,7 @@ Page {
     id: page
     title: "Configuration Page"
 
-    property var channel: null
+    property Channel channel: null
     property string prevChannelId
 
     onChannelChanged: {
@@ -18,7 +18,7 @@ Page {
             Engine.unRegisterChannelOutSink(prevChannelId)
         }
 
-        if (!channel) {
+        if (channel) {
             Engine.registerChannelOutSink(channel.options.id, videoCard.videoOutput.videoSink)
             prevChannelId = channel.options.id
         }
@@ -29,7 +29,7 @@ Page {
         font.pixelSize: 16
         font.bold: true
         color: Material.hintTextColor
-        visible: channel === null
+        visible: !channel
 
         anchors.centerIn: parent
     }
@@ -41,7 +41,7 @@ Page {
         anchors.topMargin: 16
         anchors.bottomMargin: 16
         spacing: 12
-        visible: channel !== null
+        visible: channel
 
         // Configuration Header
         HeaderSection {
@@ -53,11 +53,17 @@ Page {
             rightPadding: 20
             Material.elevation: 2
 
-            channelName: channel === null ? "" : channel.options.name
-            channelRunning: channel === null ? false : channel.metrics.status === Engine.Running
+            channelName: !channel ? "" : channel.options.name
+            channelRunning: !channel ? false : channel.metrics.status === Engine.Running
 
-            onStartChannel: Engine.startChannel(channel.options.id)
-            onStopChannel: Engine.stopChannel(channel.options.id)
+            onStartChannel: {
+                if (channel)
+                    Engine.startChannel(channel.options.id)
+            }
+            onStopChannel: {
+                if (channel)
+                    Engine.stopChannel(channel.options.id)
+            }
         }
 
         // Live Preview Section
@@ -79,8 +85,8 @@ Page {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                cameraId: channel !== null ? channel.options.cameraDevice.id : cameraId
-                description: channel !== null ? channel.options.cameraDevice.description : description
+                cameraId: channel ? channel.options.cameraDevice.id : "dummy_id"
+                description: channel ? channel.options.cameraDevice.description : "Dummy Description"
             }
 
             ActiveFiltersCard {
@@ -94,9 +100,9 @@ Page {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                winName: channel !== null ? channel.options.windowName : winName
-                geometry: channel !== null ? channel.options.windowGeometry : geometry
-                screenName: channel !== null ? channel.options.screenName : screenName
+                winName: channel ? channel.options.windowName : "Dummy Window Name"
+                geometry: channel ? channel.options.windowGeometry : [0, 0, 100, 100]
+                screenName: channel ? channel.options.screenName : "Dummy Screen"
             }
         }
 
@@ -110,12 +116,12 @@ Page {
             rightPadding: 20
             Material.elevation: 2
 
-            status: channel !== null ? channel.metrics.status : status
-            statusColor: channel !== null ? channel.metrics.statusColor : statusColor
-            fps: channel !== null ? channel.metrics.fps : fps
-            captureFps: channel !== null ? channel.metrics.captureFps : captureFps
-            skippedFps: channel !== null ? channel.metrics.skippedFps : skippedFps
-            visibleCards: channel !== null ? channel.metrics.visibleCards : visibleCards
+            status: channel ? channel.metrics.status : 0
+            statusColor: channel ? channel.metrics.statusColor : "red"
+            fps: channel ? channel.metrics.fps : -1
+            captureFps: channel ? channel.metrics.captureFps : -1
+            skippedFps: channel ? channel.metrics.skippedFps : -1
+            visibleCards: channel ? channel.metrics.visibleCards : -1
         }
     }
 }

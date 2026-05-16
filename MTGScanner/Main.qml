@@ -13,25 +13,19 @@ ApplicationWindow {
     visible: true
     title: qsTr("MTGScanner")
 
-    property bool showDrawer: true
-
     SideBar {
         id: sidebar
 
         width: 256
         height: window.height
         edge: Qt.LeftEdge
-        modal: !window.showDrawer
-        interactive: !window.showDrawer
-        position: window.showDrawer ? 1 : 0
-        visible: window.showDrawer
+        modal: false
+        interactive: false
+        position: 1
+        visible: true
         channelModel: Engine.channelsModel
 
-        onAddChannelClicked: {
-            // channelWiz.channel = Engine.createChannel()
-            // channelWiz.channel.captureSession.videoOutput = channelWiz.videoOutput
-            channelWiz.open()
-        } 
+        onAddChannelClicked: wizLoader.active = true
         onDeleteChannelClicked: (id) => {
             let channel = Engine.channel(id)
             if (channel)
@@ -42,57 +36,63 @@ ApplicationWindow {
 
     Dashboard {
         anchors.fill: parent
-        anchors.leftMargin: window.showDrawer ? sidebar.width : undefined
+        anchors.leftMargin: sidebar.width
 
         channel: sidebar.activeChannelId !== "" ? Engine.channel(sidebar.activeChannelId) : null
     }
     
-    MediaDevices {
-        id: mediads
-    }
+    Loader {
+        id: wizLoader
 
-    ChannelWizard {
-        id: channelWiz
-
-        x: (parent.width - width) / 2
-        y: (parent.height - height) / 2
-        width: 650
-        height: 550
-
-        closePolicy: Popup.NoAutoClose
-        availableCamerasModel: Engine.availableCamerasModel
-
-        onCurrentStepChanged: {
-            if (channel === null)
-                return
-
-            // if (currentStep === 0) {
-            //     if (!channel.camera.active)
-            //         channel.camera.start()
-            // } else {
-            //     if (channel.camera.active)
-            //         channel.camera.stop()
-            // }
+        active: false
+        onLoaded: {
+            item.width = 650
+            item.height = 550
+            item.channel = Engine.createChannel()
+            item.camerasModel = Engine.availableCamerasModel
+            item.channel.captureSession.videoOutput = item.videoOutput
+            item.open()
         }
 
-        onCancelClicked: {
-            // if (channel.camera.active)
-            //     channel.camera.stop()
+        sourceComponent: ChannelWizard {
+            x: (window.width - width) / 2
+            y: (window.height - height) / 2
+            closePolicy: Popup.NoAutoClose
 
-            // channel.captureSession.videoOutput = null
-            Engine.destroyChannel(channel)
-            channel = null
-            reject()
-        }
+            onCurrentStepChanged: {
+                if (channel === null)
+                    return
 
-        onCreateChannelClicked: {
-            // CRITICAL: Clear the device to release the system handle
-            // channel.camera.stop()
-            // channel.captureSession.videoOutput(null)
+                if (currentStep === 0) {
+                    if (!channel.camera.active)
+                        channel.camera.start()
+                } else {
+                    if (channel.camera.active)
+                        channel.camera.stop()
+                }
+            }
 
-            Engine.addChannel(channel)
-            channel = null
-            accept()
+            onRejected: {
+                if (channel.camera.active)
+                    channel.camera.stop()
+
+                channel.captureSession.videoOutput = null
+                Engine.destroyChannel(channel)
+            }
+
+            onAccepted: {
+                if (channel.camera.active)
+                    channel.camera.stop()
+                    
+                channel.captureSession.videoOutput = null
+                Engine.addChannel(channel)
+            }
+
+            onClosed: {
+                channel = null
+                currentStep = 0
+                wizLoader.active = false
+            }
         }
     }
 

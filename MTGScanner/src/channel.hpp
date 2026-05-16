@@ -1,62 +1,37 @@
 #pragma once
 
-#include <qcamera.h>
-#include <qmediacapturesession.h>
-#include <qobject.h>
-#include <qtmetamacros.h>
-#include <qvideosink.h>
-#include <tbb_patched.hpp>
-
 #include <QPair>
-#include <QThread>
+#include <QObject>
 #include <QCamera>
 #include <QVideoSink>
-#include <QAtomicInteger>
 #include <QMediaCaptureSession>
+#include <QtQmlIntegration/qqmlintegration.h>
 
-#include <core/frame.hpp>
-#include <engine/channelmetrics.h>
-#include <engine/framespersecond.hpp>
-#include <channeloptions.hpp>
+#include "channeloptions.hpp"
+#include "channelmetrics.h"
 
 namespace MTGS {
 
-// This lives on the EngineWorker
-struct ChannelRaw {
-    struct {
-        QThread* thread = nullptr;
-        class CameraCapture* worker = nullptr;
-    } capture;
-    ChannelOptions options;
-
-    QSharedPointer<tf::async_node<tf::continue_msg, FramePtr>> asyncSrc;
-    QSharedPointer<tf::limiter_node<FramePtr>> preLimiter;
-    QSharedPointer<tf::sequencer_node<FramePtr>> postSequencer;
-
-    FramesPerSecond fps;
-    FramesPerSecond skippedFps;
-    FramesPerSecond captureFps;
-    QAtomicInt totalSkippedFrames = 0;
-
-    QAtomicInt status = 0;
-    QAtomicInt visibleCards;
-};
+class ChannelMetrics;
 
 // This lives on the Engine (main thread).
 class Channel : public QObject {
     Q_OBJECT
+    QML_ELEMENT
+    QML_UNCREATABLE("Channel objects are managed by the Engine")
     Q_PROPERTY(QCamera* camera READ camera WRITE setCamera NOTIFY cameraChanged FINAL)
     Q_PROPERTY(QMediaCaptureSession* captureSession READ captureSession WRITE setCaptureSession NOTIFY captureSessionChanged FINAL)
     Q_PROPERTY(QVideoSink* outVideoSink READ outVideoSink WRITE setOutVideoSink NOTIFY outVideoSinkChanged FINAL)
-    Q_PROPERTY(ChannelOptions options READ options WRITE setOptions NOTIFY optionsChanged FINAL)
+    Q_PROPERTY(ChannelOptions options READ constOptions WRITE setOptions NOTIFY optionsChanged FINAL)
     Q_PROPERTY(ChannelMetrics* metrics READ metrics WRITE setMetrics NOTIFY metricsChanged FINAL)
 public:
     explicit Channel(QObject *parent = nullptr) : QObject(parent) {}
-    QCamera *camera();
-    QMediaCaptureSession *captureSession();
-    QVideoSink *outVideoSink();
+    QCamera *camera() const;
+    QMediaCaptureSession *captureSession() const;
+    QVideoSink *outVideoSink() const;
     ChannelOptions &options();
-    ChannelMetrics *metrics();
+    const ChannelOptions &constOptions() const;
+    ChannelMetrics *metrics() const;
 
 public slots:
     void setCamera(QCamera *camera);
@@ -81,11 +56,12 @@ private:
     ChannelMetrics *m_metrics = nullptr;
 };
 
-inline QCamera* Channel::camera() { return m_camera; }
-inline QMediaCaptureSession* Channel::captureSession() { return m_captureSession; }
-inline QVideoSink* Channel::outVideoSink() { return m_outVideoSink; }
+inline QCamera* Channel::camera() const { return m_camera; }
+inline QMediaCaptureSession* Channel::captureSession() const { return m_captureSession; }
+inline QVideoSink* Channel::outVideoSink() const { return m_outVideoSink; }
 inline ChannelOptions& Channel::options() { return m_options; }
-inline ChannelMetrics* Channel::metrics() { return m_metrics; }
+inline const ChannelOptions & Channel::constOptions() const { return m_options; }
+inline ChannelMetrics* Channel::metrics() const { return m_metrics; }
 
 inline void Channel::setCamera(QCamera *camera) {
     if (m_camera == camera) return;

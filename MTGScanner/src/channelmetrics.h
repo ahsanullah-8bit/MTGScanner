@@ -4,13 +4,16 @@
 #include <QColor>
 #include <QTimer>
 #include <QAtomicInteger>
+#include <QtQmlIntegration/qqmlintegration.h>
 
-#include <engine/framespersecond.hpp>
+#include "framespersecond.hpp"
 
 namespace MTGS {
     
 class ChannelMetrics : public QObject {
     Q_OBJECT
+    QML_ELEMENT
+    QML_UNCREATABLE("Channel objects are managed by the Engine")
     Q_PROPERTY(int status READ status NOTIFY fireMetricsUpdate FINAL)
     Q_PROPERTY(QColor statusColor READ statusColor NOTIFY fireMetricsUpdate FINAL)
     Q_PROPERTY(int fps READ fps NOTIFY fireMetricsUpdate FINAL)

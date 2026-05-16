@@ -18,7 +18,7 @@ public:
     QList<QCameraDevice> availableCameras() const;
     bool isCameraInUse(const QCameraDevice& device) const;
     std::optional<QCameraDevice> findBy(const QString &, const QString &) const;
-    
+
 public slots:
     void setCameraInUse(const QCameraDevice &camera, bool inUse);
     void onVideoInputsChanged();

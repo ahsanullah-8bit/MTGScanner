@@ -1,6 +1,4 @@
-#include <algorithm>
-#include <qloggingcategory.h>
-#include <qobject.h>
+#include <qnamespace.h>
 #include <tuple>
 
 #include <QList>
@@ -29,8 +27,8 @@ using const_accessor = tbb::concurrent_hash_map<QString, QSharedPointer<ChannelR
 Q_STATIC_LOGGING_CATEGORY(engine_logger, "mtgs.engine")
 Engine::Engine(QObject *parent)
     : QObject(parent)
-    , m_cameraMngr(new CameraManager(this))
     , m_availableCamerasModel(new AvailableCamerasModel(this))
+    , m_cameraMngr(new CameraManager(this))
     , m_metricsTimer(new QTimer(this))
     , m_channelsModel(new ChannelModel(this))
 {
@@ -74,13 +72,13 @@ void Engine::initializeGraph()
             accessor a;
             if (m_rawChannels.find(a, frame->channelId)
                 && !a.empty()) {
-                auto &info = a->second;
+                auto &channel = a->second;
                 qCWarning(engine_logger) << QString("Channel %1 frame at %2 expired")
-                    .arg(info->options.name)
+                    .arg(channel->options.name)
                     .arg(frame->originalFrame.startTime());
 
-                info->totalSkippedFrames++;
-                info->skippedFps.update();
+                channel->totalSkippedFrames++;
+                channel->skippedFps.update();
             }
 
             std::get<1>(ports).try_put(tf::continue_msg());
@@ -111,7 +109,7 @@ void Engine::initializeGraph()
         QImage img(f->mat.data, f->mat.cols, f->mat.rows, f->mat.step, QImage::Format_BGR888);
         f->originalFrame = QVideoFrame(img.copy());
         
-        QMetaObject::invokeMethod(this, "sendFrameToMainThread", Qt::AutoConnection, Q_ARG(FramePtr, f));
+        QMetaObject::invokeMethod(this, "sendFrameToMainThread", Qt::QueuedConnection, Q_ARG(FramePtr, f));
 
         accessor a;
         if (m_rawChannels.find(a, f->channelId) && !a.empty()) {
@@ -138,7 +136,7 @@ AvailableCamerasModel* Engine::availableCamerasModel() const
     return m_availableCamerasModel;
 }
 
-QObject *Engine::createChannel()
+Channel *Engine::createChannel()
 {
     Channel *channel = new Channel(this);
     channel->options().id = QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -149,24 +147,17 @@ QObject *Engine::createChannel()
 
     QQmlEngine::setObjectOwnership(channel, QQmlEngine::CppOwnership);
 
+    // Debug channel destruction
+#ifndef NDEBUG
     connect(channel, &Channel::destroyed, [id = channel->options().id] () {
         qCCritical(engine_logger) << "Channel got destroyed, named" << id;
     });
+#endif
 
     return channel;
 }
 
-void Engine::destroyChannel(QObject *channel)
-{
-    if (!channel)
-        return;
-
-    qCCritical(engine_logger) << "Destroy channel called for" << qobject_cast<Channel*>(channel)->options().id;
-
-    channel->deleteLater();
-}
-
-QObject *Engine::channel(const QString &channelId)
+Channel *Engine::channel(const QString &channelId)
 {
     if (!m_channels.contains(channelId)) {
         qCCritical(engine_logger) << QString("Requsted channel for a non existent id %1.").arg(channelId);
@@ -178,7 +169,7 @@ QObject *Engine::channel(const QString &channelId)
     return channel;
 }
 
-QObject *Engine::channelAtIndex(int index)
+Channel *Engine::channelAtIndex(int index)
 {
     if (index < 0 || index >= m_channelIdIndexMap.size()) {
         qCCritical(engine_logger) << QString("Requsted channel for a non existent index %1.").arg(index);
@@ -186,6 +177,16 @@ QObject *Engine::channelAtIndex(int index)
     }
 
     return channel(m_channelIdIndexMap.at(index));
+}
+
+void Engine::destroyChannel(Channel *channel)
+{
+    if (!channel)
+        return;
+
+    qCCritical(engine_logger) << "Destroy channel called for" << qobject_cast<Channel*>(channel)->options().id;
+
+    channel->deleteLater();
 }
 
 bool Engine::channelExists(const QString &id)
@@ -258,8 +259,7 @@ void Engine::loadFromSettings()
         );
 
         // Add the channel
-        QObject *channel_obj = createChannel();
-        Channel *channel = qobject_cast<Channel*>(channel_obj);
+        Channel *channel = createChannel();
 
         if (camera_opt) {
             options.cameraDevice = camera_opt.value();
@@ -297,12 +297,11 @@ void Engine::receiveFrameNotification(const FramePtr& frame)
         videoSink->setVideoFrame(frame->originalFrame);
 }
 
-void Engine::addChannel(QObject *channelObj, int status, QScreen *screen)
+void Engine::addChannel(Channel *channel, int status, QScreen *screen)
 {
-    if (!channelObj)
+    if (!channel)
         return;
 
-    Channel *channel = qobject_cast<Channel*>(channelObj);
     QSharedPointer<ChannelRaw> channel_raw(new ChannelRaw);
 
     channel->camera()->stop();

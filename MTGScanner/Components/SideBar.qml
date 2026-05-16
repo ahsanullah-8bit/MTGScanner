@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import MTGScanner // for the theme colors
 import MTGScanner.Engine
 
 Drawer {

@@ -1,9 +1,5 @@
 #pragma once
 
-#include <qcontainerfwd.h>
-#include <qlist.h>
-#include <qobject.h>
-#include <qtmetamacros.h>
 #include <tuple>
 
 #include <tbb_patched.hpp>
@@ -21,8 +17,9 @@
 #include <camera/availablecamerasmodel.h>
 #include <camera/cameracapture.h>
 #include <camera/cameramanager.h>
-#include <engine/channel.hpp>
 #include <engine/channelmodel.h>
+#include <engine/channelraw.hpp>
+#include <channel.hpp>
 
 namespace MTGS {
 
@@ -47,10 +44,10 @@ public:
     ~Engine();
     ChannelModel* channelsModel() const;
     AvailableCamerasModel* availableCamerasModel() const;
-    Q_INVOKABLE QObject *createChannel();
-    Q_INVOKABLE void destroyChannel(QObject *channel);
-    Q_INVOKABLE QObject *channel(const QString &channelId);
-    Q_INVOKABLE QObject *channelAtIndex(int index);
+    Q_INVOKABLE Channel *createChannel();
+    Q_INVOKABLE Channel *channel(const QString &channelId);
+    Q_INVOKABLE Channel *channelAtIndex(int index);
+    Q_INVOKABLE void destroyChannel(Channel *channel);
     Q_INVOKABLE bool channelExists(const QString &id);
     CameraManager *cameraManager();
 
@@ -58,7 +55,7 @@ public slots:
     void saveToSettings();
     void loadFromSettings();
     void receiveFrameNotification(const MTGS::FramePtr& frame);
-    void addChannel(QObject *channelObj, int status = ChannelStatus::Unknown, QScreen *screen = nullptr);
+    void addChannel(Channel *channel, int status = ChannelStatus::Unknown, QScreen *screen = nullptr);
     void deleteChannel(const MTGS::ChannelOptions &options);
     void startChannel(const QString &channelId);
     void stopChannel(const QString &channelId);
@@ -86,9 +83,9 @@ private:
     QList<QString> m_channelIdIndexMap;
 
     AvailableCamerasModel *m_availableCamerasModel = nullptr;
-    ChannelModel *m_channelsModel = nullptr;
     CameraManager *m_cameraMngr = nullptr;
-
+    ChannelModel *m_channelsModel = nullptr;
+    
     QTimer *m_metricsTimer = nullptr;
 };
 

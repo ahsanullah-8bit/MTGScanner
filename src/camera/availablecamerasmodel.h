@@ -21,7 +21,8 @@ public:
         IsNull,
         PhotoResolutions,
         Position,
-        VideoFormats
+        VideoFormats,
+        Device
     };
 
     explicit AvailableCamerasModel(QObject *parent = nullptr);

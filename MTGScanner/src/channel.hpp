@@ -12,8 +12,6 @@
 
 namespace MTGS {
 
-class ChannelMetrics;
-
 // This lives on the Engine (main thread).
 class Channel : public QObject {
     Q_OBJECT

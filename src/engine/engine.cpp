@@ -109,7 +109,7 @@ void Engine::initializeGraph()
         QImage img(f->mat.data, f->mat.cols, f->mat.rows, f->mat.step, QImage::Format_BGR888);
         f->originalFrame = QVideoFrame(img.copy());
         
-        QMetaObject::invokeMethod(this, "sendFrameToMainThread", Qt::QueuedConnection, Q_ARG(FramePtr, f));
+        QMetaObject::invokeMethod(this, "receiveFrameNotification", Qt::QueuedConnection, Q_ARG(FramePtr, f));
 
         accessor a;
         if (m_rawChannels.find(a, f->channelId) && !a.empty()) {
@@ -183,8 +183,6 @@ void Engine::destroyChannel(Channel *channel)
 {
     if (!channel)
         return;
-
-    qCCritical(engine_logger) << "Destroy channel called for" << qobject_cast<Channel*>(channel)->options().id;
 
     channel->deleteLater();
 }

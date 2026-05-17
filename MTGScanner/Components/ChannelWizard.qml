@@ -133,7 +133,7 @@ Dialog {
                                 flat: true
                                 // Toggle filter in the array
                                 onClicked: {
-                                    let filters = dialog.channel.options.filters
+                                    let filters = control.channel.options.filters
                                     if (checked) {
                                         if (filters.indexOf(modelData) === -1)
                                             filters.push(modelData);
@@ -141,7 +141,7 @@ Dialog {
                                         var idx = filters.indexOf(modelData);
                                         if (idx >= 0) filters.splice(idx, 1);
                                     }
-                                    dialog.channel.options.filters = filters;
+                                    control.channel.options.filters = filters;
                                 }
                                 Material.foreground: checked ? Material.accent : Material.hintTextColor
                                 Material.background: "transparent"

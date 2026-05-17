@@ -24,6 +24,12 @@ Page {
         }
     }
 
+    Component.onDestruction: {
+        if (prevChannelId !== "") {
+            Engine.unRegisterChannelOutSink(prevChannelId)
+        }
+    }
+
     Label {
         text: "No Channels yet. Please create one!"
         font.pixelSize: 16

@@ -13,7 +13,7 @@ namespace MTGS {
 class ChannelMetrics : public QObject {
     Q_OBJECT
     QML_ELEMENT
-    QML_UNCREATABLE("Channel objects are managed by the Engine")
+    QML_UNCREATABLE("Channel Metrics objects are managed by the Engine")
     Q_PROPERTY(int status READ status NOTIFY fireMetricsUpdate FINAL)
     Q_PROPERTY(QColor statusColor READ statusColor NOTIFY fireMetricsUpdate FINAL)
     Q_PROPERTY(int fps READ fps NOTIFY fireMetricsUpdate FINAL)

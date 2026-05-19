@@ -49,6 +49,9 @@ Engine::Engine(QObject *parent)
 
 Engine::~Engine() 
 {
+    // Save settings before stopping everything.
+    saveToSettings();
+
     for (auto it = m_channels.begin(); it != m_channels.end(); ++it) {
         it.value()->camera()->stop();
     }
@@ -59,8 +62,6 @@ Engine::~Engine()
     }
 
     m_graph.wait_for_all();
-
-    saveToSettings();
 }
 
 void Engine::initializeGraph()

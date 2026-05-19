@@ -2,6 +2,7 @@
 #include <QQmlEngine>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
+#include <QScopedPointer>
 
 #include <engine/engine.h>
 
@@ -13,8 +14,8 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationDomain("MadStudio.io");
     QCoreApplication::setApplicationName("MTGScanner");
 
-    MTGS::Engine mtgsEngine;
-    qmlRegisterSingletonInstance("MTGScanner.Engine", 0, 1, "Engine", &mtgsEngine);
+    QScopedPointer<MTGS::Engine> mtgs_engine(new MTGS::Engine);
+    qmlRegisterSingletonInstance("MTGScanner.Engine", 0, 1, "Engine", mtgs_engine.get());
 
     QQmlApplicationEngine engine;
     QObject::connect(

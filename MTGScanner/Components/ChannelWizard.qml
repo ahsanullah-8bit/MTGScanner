@@ -23,6 +23,9 @@ Dialog {
         StackLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.leftMargin: 5
+            Layout.rightMargin: 5
+            Layout.topMargin: 5
             currentIndex: control.currentStep
 
             // Step 1: Camera Selection
@@ -307,7 +310,7 @@ Dialog {
 
         Button {
             Layout.leftMargin: 20
-            Layout.bottomMargin: 5
+            Layout.bottomMargin: 12
 
             flat: true
             text: "Cancel"
@@ -315,7 +318,7 @@ Dialog {
         }
         Item { Layout.fillWidth: true }
         Button {
-            Layout.bottomMargin: 5
+            Layout.bottomMargin: 12
 
             flat: true
             text: "← Back"
@@ -324,7 +327,7 @@ Dialog {
         }
         Button {
             Layout.rightMargin: 20
-            Layout.bottomMargin: 5
+            Layout.bottomMargin: 12
 
             enabled: {
                 if (control.currentStep === 0)

@@ -28,9 +28,10 @@ ApplicationWindow {
         onAddChannelClicked: wizLoader.active = true
         onDeleteChannelClicked: (id) => {
             let channel = Engine.channel(id)
-            if (channel)
+            if (channel) {
                 deleteDialog.channelOptions = channel.options
-            deleteDialog.open()
+                deleteDialog.open()
+            }
         }
     }
 

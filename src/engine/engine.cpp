@@ -1,8 +1,9 @@
-#include <qnamespace.h>
+#include <cstddef>
 #include <tuple>
 
 #include <QList>
 #include <QUuid>
+#include <QObject>
 #include <QThread>
 #include <QScreen>
 #include <QVariant>
@@ -301,11 +302,15 @@ void Engine::addChannel(Channel *channel, int status, QScreen *screen)
     if (!channel)
         return;
 
-    QSharedPointer<ChannelRaw> channel_raw(new ChannelRaw);
+    // Mark the camera first. This function expects the QCamera
+    // to have already been activated before.
+    m_cameraMngr->setCameraInUse(channel->options().cameraDevice, true);
 
     channel->camera()->stop();
     channel->captureSession()->setVideoOutput(nullptr);
     channel->captureSession()->setVideoSink(new QVideoSink(channel->captureSession()));
+
+    QSharedPointer<ChannelRaw> channel_raw(new ChannelRaw);
 
     // Bind metrics
     channel->metrics()->setFps(&channel_raw->fps);
@@ -383,32 +388,11 @@ void Engine::addChannel(Channel *channel, int status, QScreen *screen)
     if (!m_rawChannels.emplace(channel->options().id, channel_raw)) {
         qCCritical(engine_logger) << "Failed to insert a new channel after connecting it, named" << channel->options().name;
         
-        // Cleanup, in reverse
-        disconnect(m_metricsTimer, &QTimer::timeout, channel->metrics(), &ChannelMetrics::fireMetricsUpdate);
-        channel->metrics()->setFps(nullptr);
-        channel->metrics()->setCaptureFps(nullptr);
-        channel->metrics()->setSkippedFps(nullptr);
-        channel->metrics()->setStatus(nullptr);
-        channel->metrics()->setVisibleCards(nullptr);
-
-        channel->camera()->disconnect(); // all
-
-        capture->setGateway(nullptr);
-
-        thread->quit();
-        thread->wait();
-
-        tf::remove_edge(*channel_raw->preLimiter, *m_processor);
-        tf::remove_edge(*channel_raw->asyncSrc,   *channel_raw->preLimiter);
-        tf::remove_edge(*channel_raw->postSequencer, *m_uiNotifier);
-
-        channel->captureSession()->setVideoSink(nullptr);
+        disconnectChannel(channel, channel_raw);
         channel->deleteLater();
         return;
     }
 
-    // Mark the camera
-    m_cameraMngr->setCameraInUse(channel->options().cameraDevice, true);
     if (channel->metrics()->status() != Engine::Stopped) {
         // Then it's probably Unknown
         channel->camera()->start();
@@ -422,59 +406,71 @@ void Engine::addChannel(Channel *channel, int status, QScreen *screen)
 void Engine::deleteChannel(const ChannelOptions &options)
 {
     if (!m_channels.contains(options.id)) {
-        qCCritical(engine_logger) << QString("Trying to delete a non existent channel using id %1.").arg(options.id);
+        qCCritical(engine_logger) << QString("Trying to delete a non-existent channel using id %1.").arg(options.id);
         return;
     }
 
     // In case someone wants to opt-out
     emit channelAboutToBeDeleted(options);
 
-    // Cleanup
     auto *channel = m_channels.value(options.id);
-    disconnect(m_metricsTimer, &QTimer::timeout, channel->metrics(), &ChannelMetrics::fireMetricsUpdate);
+    disconnectChannel(channel, nullptr);
+
+    // Delete
+    m_channels.take(options.id)->deleteLater();
+    m_channelIdIndexMap.removeOne(options.id);
+    m_rawChannels.erase(options.id);
+
+    emit channelDeleted(options);
+}
+
+void Engine::disconnectChannel(Channel *channel, QSharedPointer<ChannelRaw> raw_channel)
+{
     channel->camera()->stop();
+
+    // Metrics
+    disconnect(m_metricsTimer, &QTimer::timeout, channel->metrics(), &ChannelMetrics::fireMetricsUpdate);
+
     channel->metrics()->setFps(nullptr);
     channel->metrics()->setCaptureFps(nullptr);
     channel->metrics()->setSkippedFps(nullptr);
     channel->metrics()->setStatus(nullptr);
     channel->metrics()->setVisibleCards(nullptr);
-    
-    channel->camera()->disconnect(); // all
 
-    accessor a;
-    if (!m_rawChannels.find(a, options.id)
-        || a.empty()) {
-        qCCritical(engine_logger) << "Failed to delete a channel named" << options.name;
-        return;
-    }
-    auto &raw_channel = a->second;
-    raw_channel->capture.worker->setGateway(nullptr);
-    raw_channel->capture.thread->quit();
-    raw_channel->capture.thread->wait(); // TODO: Maybe add a timeout and then force quit.
-    raw_channel->status.storeRelaxed(Engine::Unknown);
+    // Raw Channel
+    if (!raw_channel) {
+        accessor a;
+        if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
+            auto raw_channel = a->second;
+            raw_channel->capture.worker->setGateway(nullptr);
 
-    tf::remove_edge(*raw_channel->preLimiter, *m_processor);
-    tf::remove_edge(*raw_channel->asyncSrc,   *raw_channel->preLimiter);
-    tf::remove_edge(*raw_channel->postSequencer, *m_uiNotifier);
+            raw_channel->capture.thread->quit();
+            if (!raw_channel->capture.thread->wait(1000)) {
+                qCWarning(engine_logger) << "Capture Thread failed to exit cleanly. Forcing termination for" << channel->options().id;
+                raw_channel->capture.thread->terminate();
+                raw_channel->capture.thread->wait();
+            }
 
-    channel->captureSession()->setVideoSink(nullptr);
-
-    // Unmark the camera on destruction of channel.
-    connect(channel, &Channel::destroyed, 
-        [this, device = options.cameraDevice] () {
-            m_cameraMngr->setCameraInUse(device, false);
+            tf::remove_edge(*(raw_channel->preLimiter), *m_processor);
+            tf::remove_edge(*(raw_channel->asyncSrc),   *(raw_channel->preLimiter));
+            tf::remove_edge(*(raw_channel->postSequencer), *m_uiNotifier);
+        } else {
+            qCWarning(engine_logger) << "Couldn't find a raw channel with id" << channel->options().id;
         }
-    );
-
-    // Delete
-    m_channels.take(options.id)->deleteLater();
-    m_channelIdIndexMap.removeOne(options.id);
-    if (!m_rawChannels.erase(a)) {
-        qCCritical(engine_logger) << "Failed to erase a channel after disconnecting it, named" << options.name;
-        return;
     }
 
-    emit channelDeleted(options);
+    // Explicitly delete the camera, to release the handle.
+    if (auto *camera = channel->camera()) {
+        camera->disconnect(); // i.e. CameraCapture
+        camera->deleteLater();
+    }
+    channel->setCamera(nullptr);
+    // Then set the camera-in-use to false
+    auto device = channel->options().cameraDevice;
+    if (m_cameraMngr->isCameraInUse(device))
+        m_cameraMngr->setCameraInUse(device, false);
+    else
+        qCCritical(engine_logger) << QString("Unexpected, Camera %1 was not in use during destruction.").arg(device.id());
 }
 
 void Engine::startChannel(const QString &channelId)

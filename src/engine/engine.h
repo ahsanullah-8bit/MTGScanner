@@ -73,6 +73,9 @@ private slots:
     void initializeGraph();
 
 private:
+    void disconnectChannel(Channel *channel, QSharedPointer<ChannelRaw> raw_channel = nullptr);
+
+private:
     tf::graph m_graph;
     QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<FramePtr, tf::continue_msg>>> m_processor;
     QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<tf::continue_msg>>> m_frameDistributor;

@@ -100,6 +100,7 @@ Dialog {
                         color: Material.foreground
                     }
                     TextField {
+                        id: channelNameField
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignLeft | Qt.AlignTop
 
@@ -324,6 +325,16 @@ Dialog {
         Button {
             Layout.rightMargin: 20
             Layout.bottomMargin: 5
+
+            enabled: {
+                if (control.currentStep === 0)
+                    return control.camerasModel && cameraSelector.count > 0 && cameraSelector.currentIndex >= 0
+
+                if (control.currentStep === 1)
+                    return channelNameField.text !== ""
+
+                return true
+            }
 
             highlighted: true
             text: currentStep < stepCount - 1 ? "Next →" : "Create Channel"

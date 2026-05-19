@@ -92,6 +92,7 @@ ApplicationWindow {
             onClosed: {
                 channel = null
                 currentStep = 0
+                isCameraSelected = false
                 wizLoader.active = false
             }
         }

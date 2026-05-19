@@ -10,6 +10,7 @@ Dialog {
     property Channel channel: null
     property var camerasModel: null
     property alias videoOutput: videoOutput
+    property bool isCameraSelected: false
     property int currentStep: 0
     readonly property int stepCount: 3
 
@@ -62,7 +63,7 @@ Dialog {
                             if (channel.camera.active)
                                 channel.camera.stop()
 
-                            console.log("Selected device: " + currentValue)
+                            isCameraSelected = true
                             channel.options.cameraDevice = currentValue
                             channel.camera.cameraDevice = currentValue
                             channel.camera.start()
@@ -331,7 +332,10 @@ Dialog {
 
             enabled: {
                 if (control.currentStep === 0)
-                    return control.camerasModel && cameraSelector.count > 0 && cameraSelector.currentIndex >= 0
+                    return control.camerasModel
+                        && cameraSelector.count > 0
+                        && cameraSelector.currentIndex >= 0
+                        && isCameraSelected
 
                 if (control.currentStep === 1)
                     return channelNameField.text !== ""

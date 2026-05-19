@@ -15,6 +15,7 @@
 namespace MTGS {
     
 struct Frame {
+    bool isExpired = false;
     size_t sequenceId;
     QString channelId;
     QString cameraId;

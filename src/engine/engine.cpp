@@ -68,24 +68,15 @@ Engine::~Engine()
 void Engine::initializeGraph()
 {
     auto processor_body = [this](const FramePtr &frame, auto &ports) {
-        // Process the image. For now, we just pass it through.
-
+        // Check for expiration
         if (frame->timestamp.msecsTo(QTime::currentTime()) > 100) {
-            accessor a;
-            if (m_rawChannels.find(a, frame->channelId)
-                && !a.empty()) {
-                auto &channel = a->second;
-                qCWarning(engine_logger) << QString("Channel %1 frame at %2 expired")
-                    .arg(channel->options.name)
-                    .arg(frame->originalFrame.startTime());
+            frame->isExpired = true;
 
-                channel->totalSkippedFrames++;
-                channel->skippedFps.update();
-            }
-
-            std::get<1>(ports).try_put(tf::continue_msg());
+            std::get<0>(ports).try_put(frame);
             return;
         }
+
+        // TODO: Process the image. For now, we just pass it through.
 
         std::get<0>(ports).try_put(frame);
         std::get<1>(ports).try_put(tf::continue_msg());
@@ -99,8 +90,6 @@ void Engine::initializeGraph()
             return;
         }
 
-        // TODO: Maybe check for frame expiration here as well.
-
         auto &channel = a->second;
         channel->postSequencer->try_put(frame);
         channel->preLimiter->decrementer().try_put(tf::continue_msg());
@@ -108,16 +97,28 @@ void Engine::initializeGraph()
     };
 
     auto ui_notifier_body = [this](const FramePtr &f) {
-        QImage img(f->mat.data, f->mat.cols, f->mat.rows, f->mat.step, QImage::Format_BGR888);
-        f->originalFrame = QVideoFrame(img.copy());
-        
-        QMetaObject::invokeMethod(this, "receiveFrameNotification", Qt::QueuedConnection, Q_ARG(FramePtr, f));
-
         accessor a;
         if (m_rawChannels.find(a, f->channelId) && !a.empty()) {
             auto &channel = a->second;
+
+            // Handle the expired frame.
+            if (f->isExpired) {
+                qCWarning(engine_logger) << QString("Frame expired, channel %1, at %2 usecs.")
+                    .arg(channel->options.name)
+                    .arg(f->originalFrame.startTime());
+
+                channel->skippedFps.update();
+                return;
+            }
+
             channel->fps.update();
         }
+        a.release();
+
+        // Send the frame
+        QImage img(f->mat.data, f->mat.cols, f->mat.rows, f->mat.step, QImage::Format_BGR888);
+        f->originalFrame = QVideoFrame(img.copy());
+        QMetaObject::invokeMethod(this, "receiveFrameNotification", Qt::QueuedConnection, Q_ARG(FramePtr, f));
     };
 
     // The critical processor node.

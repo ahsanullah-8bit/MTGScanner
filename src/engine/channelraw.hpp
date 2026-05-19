@@ -27,7 +27,6 @@ struct ChannelRaw {
     FramesPerSecond fps;
     FramesPerSecond skippedFps;
     FramesPerSecond captureFps;
-    QAtomicInt totalSkippedFrames = 0;
 
     QAtomicInt status = 0;
     QAtomicInt visibleCards;

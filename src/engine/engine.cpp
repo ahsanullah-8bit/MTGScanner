@@ -44,7 +44,7 @@ Engine::Engine(QObject *parent)
     // Load the saved channels
     loadFromSettings();
 
-    m_metricsTimer->start(1000);
+    m_metricsTimer->start(750);
 }
 
 Engine::~Engine() 

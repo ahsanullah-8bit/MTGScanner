@@ -85,3 +85,4 @@ CMakeLists.txt.user*
 compile_commands.json
 **/.qmlls.ini
 .mind_map.md
+*.onnx

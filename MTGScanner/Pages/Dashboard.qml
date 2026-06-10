@@ -10,7 +10,7 @@ Page {
     id: page
     title: "Configuration Page"
 
-    property Channel channel: null
+    property AbstractChannel channel: null
     property string prevChannelId
 
     onChannelChanged: {

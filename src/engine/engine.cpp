@@ -167,7 +167,7 @@ Channel *Engine::createChannel()
     return channel;
 }
 
-Channel *Engine::channel(const QString &channelId)
+AbstractChannel *Engine::channel(const QString &channelId)
 {
     if (!m_channels.contains(channelId)) {
         qCCritical(engine_logger) << QString("Requsted channel for a non existent id %1.").arg(channelId);
@@ -179,7 +179,7 @@ Channel *Engine::channel(const QString &channelId)
     return channel;
 }
 
-Channel *Engine::channelAtIndex(int index)
+AbstractChannel *Engine::channelAtIndex(int index)
 {
     if (index < 0 || index >= m_channelIdIndexMap.size()) {
         qCCritical(engine_logger) << QString("Requsted channel for a non existent index %1.").arg(index);

@@ -45,8 +45,8 @@ public:
     ChannelModel* channelsModel() const;
     AvailableCamerasModel* availableCamerasModel() const;
     Q_INVOKABLE Channel *createChannel();
-    Q_INVOKABLE Channel *channel(const QString &channelId);
-    Q_INVOKABLE Channel *channelAtIndex(int index);
+    Q_INVOKABLE AbstractChannel *channel(const QString &channelId);
+    Q_INVOKABLE AbstractChannel *channelAtIndex(int index);
     Q_INVOKABLE void destroyChannel(Channel *channel);
     Q_INVOKABLE bool channelExists(const QString &id);
     CameraManager *cameraManager();

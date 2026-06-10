@@ -9,6 +9,10 @@
     {
       "name": "tbb",
       "version>=": "2022.3.0#0"
+    },
+    {
+        "name": "yaml-cpp",
+        "version>=": "0.8.0#2"
     }
   ]
 }

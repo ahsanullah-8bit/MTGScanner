@@ -7,6 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 6.8 REQUIRED COMPONENTS Quick Multimedia QuickControls2)
 find_package(OpenCV CONFIG REQUIRED)
 find_package(TBB CONFIG REQUIRED)
+find_package(yaml-cpp CONFIG REQUIRED)
+
+include(cmake/3rdParty/onnxruntime.cmake)
+find_package(onnxruntime CONFIG REQUIRED)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -21,6 +25,7 @@ qt_add_executable(${PROJECT_NAME}App
     src/camera/cameramanager.cpp
     src/core/frame.hpp
     src/core/prediction.hpp
+    src/engine/carddetector.cpp
     src/engine/channelraw.hpp
     src/engine/channelmodel.h
     src/engine/channelmodel.cpp
@@ -58,6 +63,8 @@ target_link_libraries(${PROJECT_NAME}App
 
     TBB::tbb
     ${OpenCV_LIBS}
+    onnxruntime::onnxruntime
+    yaml-cpp::yaml-cpp
 
     MTGScanner  # the static library, just for channeloptions.hpp
     MTGScannerplugin
@@ -79,3 +86,7 @@ if (CMAKE_EXPORT_COMPILE_COMMANDS)
         "${CMAKE_SOURCE_DIR}/compile_commands.json"
     )
 endif()
+
+include(cmake/helpers.cmake)
+mtgs_copy_assets(ModelAssets "${CMAKE_CURRENT_SOURCE_DIR}/assets" "${CMAKE_CURRENT_BINARY_DIR}")
+add_dependencies(${PROJECT_NAME}App ModelAssets)

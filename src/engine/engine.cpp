@@ -1,4 +1,10 @@
 #include <cstddef>
+#include <onnxruntime_cxx_api.h>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/persistence.hpp>
+#include <opencv2/highgui.hpp>
+#include <qloggingcategory.h>
+#include <qsharedpointer.h>
 #include <tuple>
 
 #include <QList>
@@ -103,7 +109,8 @@ void Engine::initializeGraph()
 
             // Handle the expired frame.
             if (f->isExpired) {
-                qCWarning(engine_logger) << QString("Frame expired, channel %1, at %2 usecs.")
+                qCWarning(engine_logger) << QString("Frame %1 expired, channel %2, at %3 usecs.")
+                    .arg(f->sequenceId)
                     .arg(channel->options.name)
                     .arg(f->originalFrame.startTime());
 

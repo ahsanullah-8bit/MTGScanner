@@ -92,7 +92,7 @@ void Engine::initializeGraph()
 {
     auto processor_body = [this](const FramePtr &frame, auto &ports) {
         // Check for expiration
-        if (frame->timestamp.msecsTo(QTime::currentTime()) > 100) {
+        if (frame->timestamp.msecsTo(QTime::currentTime()) > 200) {
             frame->isExpired = true;
 
             std::get<0>(ports).try_put(frame);
@@ -110,6 +110,7 @@ void Engine::initializeGraph()
         if (!m_rawChannels.find(a, frame->channelId)
             || a.empty()) {
             std::get<0>(ports).try_put(tf::continue_msg());
+            qCDebug(engine_logger) << "Channel not found for frame" << frame->sequenceId << frame->channelId;
             return;
         }
 
@@ -126,10 +127,10 @@ void Engine::initializeGraph()
 
             // Handle the expired frame.
             if (f->isExpired) {
-                qCWarning(engine_logger) << QString("Frame %1 expired, channel %2, at %3 usecs.")
+                qCWarning(engine_logger) << QString("Frame %1 expired, channel %2, current time difference %3ms." )
                     .arg(f->sequenceId)
                     .arg(channel->options.name)
-                    .arg(f->originalFrame.startTime());
+                    .arg(f->timestamp.msecsTo(QTime::currentTime()));
 
                 channel->skippedFps.update();
                 return;

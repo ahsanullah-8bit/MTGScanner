@@ -56,6 +56,7 @@ public slots:
     void loadFromSettings();
     void receiveFrameNotification(const MTGS::FramePtr& frame);
     void addChannel(Channel *channel, int status = ChannelStatus::Unknown, QScreen *screen = nullptr);
+    void addDemoChannel(DemoChannel *channel, QScreen *screen = nullptr);
     void deleteChannel(const MTGS::ChannelOptions &options);
     void startChannel(const QString &channelId);
     void stopChannel(const QString &channelId);
@@ -73,7 +74,7 @@ private slots:
     void initializeGraph();
 
 private:
-    void disconnectChannel(Channel *channel, QSharedPointer<ChannelRaw> raw_channel = nullptr);
+    void disconnectChannel(AbstractChannel *channel, QSharedPointer<ChannelRaw> raw_channel = nullptr);
 
 private:
     tf::graph m_graph;
@@ -82,7 +83,7 @@ private:
     QSharedPointer<tf::function_node<FramePtr>> m_uiNotifier;
 
     tbb::concurrent_hash_map<QString, QSharedPointer<ChannelRaw>> m_rawChannels;
-    QHash<QString, Channel*> m_channels;
+    QHash<QString, AbstractChannel*> m_channels;
     QList<QString> m_channelIdIndexMap;
 
     AvailableCamerasModel *m_availableCamerasModel = nullptr;

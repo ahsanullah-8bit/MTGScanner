@@ -46,6 +46,11 @@ void CameraCapture::onErrorOccurred(const QString &channelName, QCamera::Error e
     qCCritical(capture_logger) << "Channel" << channelName << error << errorString;
 }
 
+void CameraCapture::onPlayerErrorOccurred(const QString &channelName, QMediaPlayer::Error error, const QString &errorString)
+{
+    qCCritical(capture_logger) << "Channel" << channelName << error << errorString;
+}
+
 void CameraCapture::onActiveChanged(const QString &channelName, bool isActive)
 {
     qCDebug(capture_logger) << "Channel" << channelName << "isActive:" << isActive;

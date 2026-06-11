@@ -1,10 +1,4 @@
 #include <cstddef>
-#include <onnxruntime_cxx_api.h>
-#include <opencv2/core/mat.hpp>
-#include <opencv2/core/persistence.hpp>
-#include <opencv2/highgui.hpp>
-#include <qloggingcategory.h>
-#include <qsharedpointer.h>
 #include <tuple>
 
 #include <QList>
@@ -22,7 +16,14 @@
 #include <QCoreApplication>
 #include <QLoggingCategory>
 
+#include <onnxruntime_cxx_api.h>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/persistence.hpp>
+#include <opencv2/highgui.hpp>
+
 #include <core/frame.hpp>
+#include <engine/channelraw.hpp>
+#include <channel.hpp>
 #include "engine.h"
 
 namespace MTGS {
@@ -48,6 +49,19 @@ Engine::Engine(QObject *parent)
     connect(this, &Engine::channelAdded, m_channelsModel, &ChannelModel::channelAdded);
     connect(this, &Engine::channelAboutToBeDeleted, m_channelsModel, &ChannelModel::channelDeleted);
 
+#ifndef NDEBUG
+    // Add a demo channel
+    DemoChannel *channel = new DemoChannel(this);
+    channel->options().id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    channel->options().name = "Demo";
+    channel->setPlayer(new QMediaPlayer(channel));
+    channel->player()->setSource(QUrl("assets/videos/demo.mp4"));
+    channel->player()->setVideoSink(new QVideoSink(channel->player()));
+    channel->setMetrics(new ChannelMetrics(channel));
+
+    addDemoChannel(channel);
+#endif
+
     // Load the saved channels
     loadFromSettings();
 
@@ -60,7 +74,10 @@ Engine::~Engine()
     saveToSettings();
 
     for (auto it = m_channels.begin(); it != m_channels.end(); ++it) {
-        it.value()->camera()->stop();
+        if (auto channel = qobject_cast<Channel*>(it.value()))
+            channel->camera()->stop();
+        else if (auto demo_channel = qobject_cast<DemoChannel*>(it.value()))
+            demo_channel->player()->stop();
     }
 
     for (auto &[_, raw_channel] : m_rawChannels) {
@@ -174,7 +191,7 @@ AbstractChannel *Engine::channel(const QString &channelId)
         return nullptr;
     }
 
-    Channel *channel = m_channels.value(channelId);
+    AbstractChannel *channel = m_channels.value(channelId);
     QQmlEngine::setObjectOwnership(channel, QQmlEngine::CppOwnership);
     return channel;
 }
@@ -214,6 +231,9 @@ void Engine::saveToSettings()
 
     size_t i = 0;
     for (auto it = m_channels.cbegin(); it != m_channels.cend(); ++it) {
+        if (it.value()->channelType() == "DemoChannel")
+            continue;
+
         const auto& options = it.value()->options();
         settings.setArrayIndex(i++);
         settings.setValue("id", options.id);
@@ -411,9 +431,102 @@ void Engine::addChannel(Channel *channel, int status, QScreen *screen)
     emit channelAdded(channel->options());
 }
 
+void Engine::addDemoChannel(DemoChannel *channel, QScreen *screen)
+{
+    if (!channel)
+        return;
+
+    QSharedPointer<ChannelRaw> channel_raw(new ChannelRaw);
+    channel->metrics()->setFps(&channel_raw->fps);
+    channel->metrics()->setCaptureFps(&channel_raw->captureFps);
+    channel->metrics()->setSkippedFps(&channel_raw->skippedFps);
+    channel->metrics()->setStatus(&channel_raw->status);
+    channel->metrics()->setVisibleCards(&channel_raw->visibleCards);
+    connect(m_metricsTimer, &QTimer::timeout, channel->metrics(), &ChannelMetrics::fireMetricsUpdate);
+
+    // Per-channel nodes and edges
+    auto async_src_body = [] (const tf::continue_msg &, tf::async_node<tf::continue_msg, FramePtr>::gateway_type& gateway) {};
+    auto sequencer_body = [] (const FramePtr &f) { return f->sequenceId; };
+    channel_raw->asyncSrc = QSharedPointer<tf::async_node<tf::continue_msg, FramePtr>>::create(m_graph, tf::unlimited, async_src_body);
+    channel_raw->preLimiter = QSharedPointer<tf::limiter_node<FramePtr>>::create(m_graph, channel->options().maxInFlight);
+    channel_raw->postSequencer = QSharedPointer<tf::sequencer_node<FramePtr>>::create(m_graph, sequencer_body);
+
+    tf::make_edge(*channel_raw->asyncSrc, *channel_raw->preLimiter);
+    tf::make_edge(*channel_raw->preLimiter, *m_processor);
+    tf::make_edge(*channel_raw->postSequencer, *m_uiNotifier);
+
+    // Camera Capture setup
+    auto *thread = new QThread();
+    auto *capture = new CameraCapture(channel->options().id, channel->options().cameraDevice.id(), channel_raw->captureFps);
+    capture->setGateway(&channel_raw->asyncSrc->gateway());
+    connect(thread, &QThread::finished, capture, &QObject::deleteLater);
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    connect(channel->player()->videoSink(), &QVideoSink::videoFrameChanged, capture, &CameraCapture::onVideoFrameChanged);
+    connect(channel->player(), &QMediaPlayer::errorOccurred,
+        [this, channel = channel, capture = capture] (QMediaPlayer::Error error, const QString &errorStr) {
+            accessor a;
+            if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
+                auto &raw_channel = a->second;
+                raw_channel->status.storeRelaxed(Engine::Errored);
+            }
+
+            QMetaObject::invokeMethod(capture,
+                "onPlayerErrorOccurred",
+                Q_ARG(QString, channel->options().name),
+                Q_ARG(QMediaPlayer::Error, error),
+                Q_ARG(QString, errorStr));
+        }
+    );
+    connect(channel->player(), &QMediaPlayer::playbackStateChanged,
+        [this, channel = channel, capture = capture] (QMediaPlayer::PlaybackState status) {
+            accessor a;
+            if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
+                auto &raw_channel = a->second;
+                if (raw_channel->status.loadRelaxed() == Engine::Errored) {
+                    // This is an error scenario, not a common start/stop one.
+                    // We let that be.
+                    return;
+                }
+
+                if (status == QMediaPlayer::PlayingState)
+                    raw_channel->status.storeRelease(Engine::Running);
+                else
+                    raw_channel->status.storeRelease(Engine::Stopped);
+            }
+
+            QMetaObject::invokeMethod(capture,
+                "onActiveChanged",
+                Q_ARG(QString, channel->options().name),
+                Q_ARG(bool, status == QMediaPlayer::PlayingState));
+        }
+    );
+
+    capture->moveToThread(thread);
+    channel_raw->capture = {thread, capture};
+    channel_raw->options = channel->options();
+    channel_raw->status.storeRelaxed(Engine::Running);
+    channel_raw->capture.thread->start();
+    channel_raw->skippedFps.start();
+    channel_raw->fps.start();
+
+    if (!m_rawChannels.emplace(channel->options().id, channel_raw)) {
+        qCCritical(engine_logger) << "Failed to insert a new channel after connecting it, named" << channel->options().name;
+
+        disconnectChannel(channel, channel_raw);
+        channel->deleteLater();
+        return;
+    }
+
+    channel->player()->play();
+    m_channels.emplace(channel->options().id, channel);
+    m_channelIdIndexMap.append(channel->options().id);
+    emit channelAdded(channel->options());
+}
+
 void Engine::deleteChannel(const ChannelOptions &options)
 {
-    if (!m_channels.contains(options.id)) {
+    auto *channel = m_channels.value(options.id, nullptr);
+    if (!channel || channel->channelType() != "Channel") {
         qCCritical(engine_logger) << QString("Trying to delete a non-existent channel using id %1.").arg(options.id);
         return;
     }
@@ -421,7 +534,6 @@ void Engine::deleteChannel(const ChannelOptions &options)
     // In case someone wants to opt-out
     emit channelAboutToBeDeleted(options);
 
-    auto *channel = m_channels.value(options.id);
     disconnectChannel(channel, nullptr);
 
     // Delete
@@ -432,9 +544,12 @@ void Engine::deleteChannel(const ChannelOptions &options)
     emit channelDeleted(options);
 }
 
-void Engine::disconnectChannel(Channel *channel, QSharedPointer<ChannelRaw> raw_channel)
+void Engine::disconnectChannel(AbstractChannel *channel, QSharedPointer<ChannelRaw> raw_channel)
 {
-    channel->camera()->stop();
+    if (auto _channel = qobject_cast<Channel*>(channel))
+        _channel->camera()->stop();
+    else if (auto demo_channel = qobject_cast<DemoChannel*>(channel))
+        demo_channel->player()->stop();
 
     // Metrics
     disconnect(m_metricsTimer, &QTimer::timeout, channel->metrics(), &ChannelMetrics::fireMetricsUpdate);
@@ -467,18 +582,20 @@ void Engine::disconnectChannel(Channel *channel, QSharedPointer<ChannelRaw> raw_
         }
     }
 
-    // Explicitly delete the camera, to release the handle.
-    if (auto *camera = channel->camera()) {
-        camera->disconnect(); // i.e. CameraCapture
-        camera->deleteLater();
+    if (auto _channel = qobject_cast<Channel*>(channel)) {
+        // Explicitly delete the camera, to release the handle.
+        if (auto *camera = _channel->camera()) {
+            camera->disconnect(); // i.e. CameraCapture
+            camera->deleteLater();
+        }
+        _channel->setCamera(nullptr);
+        // Then set the camera-in-use to false
+        auto device = _channel->options().cameraDevice;
+        if (m_cameraMngr->isCameraInUse(device))
+            m_cameraMngr->setCameraInUse(device, false);
+        else
+            qCCritical(engine_logger) << QString("Unexpected, Camera %1 was not in use during destruction.").arg(device.id());
     }
-    channel->setCamera(nullptr);
-    // Then set the camera-in-use to false
-    auto device = channel->options().cameraDevice;
-    if (m_cameraMngr->isCameraInUse(device))
-        m_cameraMngr->setCameraInUse(device, false);
-    else
-        qCCritical(engine_logger) << QString("Unexpected, Camera %1 was not in use during destruction.").arg(device.id());
 }
 
 void Engine::startChannel(const QString &channelId)
@@ -488,9 +605,12 @@ void Engine::startChannel(const QString &channelId)
         return;
     }
 
-    auto channel = m_channels.value(channelId);
-    if (channel->metrics()->status() != ChannelStatus::Running) {
-        channel->camera()->start();
+    auto abstract_channel = m_channels.value(channelId);
+    if (abstract_channel->metrics()->status() != ChannelStatus::Running) {
+        if (auto channel = qobject_cast<Channel*>(abstract_channel))
+            channel->camera()->start();
+        else if (auto demo_channel = qobject_cast<DemoChannel*>(abstract_channel))
+            demo_channel->player()->play();
         // EngineWoker will change the status
     }
 }
@@ -502,9 +622,12 @@ void Engine::stopChannel(const QString &channelId)
         return;
     }
 
-    auto channel = m_channels.value(channelId);
-    if (channel->metrics()->status() != ChannelStatus::Stopped || channel->camera()->isActive()) {
-        channel->camera()->stop();
+    auto abstract_channel = m_channels.value(channelId);
+    if (abstract_channel->metrics()->status() != ChannelStatus::Stopped) {
+        if (auto channel = qobject_cast<Channel*>(abstract_channel))
+            channel->camera()->stop();
+        else if (auto demo_channel = qobject_cast<DemoChannel*>(abstract_channel))
+            demo_channel->player()->pause();
         // EngineWoker will change the status
     }
 }

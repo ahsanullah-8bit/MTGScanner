@@ -8,6 +8,7 @@
 #include <QVideoFrame>
 #include <QVideoSink>
 #include <QCameraDevice>
+#include <QMediaPlayer>
 #include <QMediaCaptureSession>
 #include <QSharedPointer>
 
@@ -29,6 +30,7 @@ public slots:
     void setGateway(tbb::flow::async_node<tbb::flow::continue_msg, FramePtr>::gateway_type *gateway);
     void onVideoFrameChanged(const QVideoFrame &frame);
     void onErrorOccurred(const QString &channelName, QCamera::Error error, const QString &errorString);
+    void onPlayerErrorOccurred(const QString &channelName, QMediaPlayer::Error error, const QString &errorString);
     void onActiveChanged(const QString &channelName, bool isActive);
 
 private:

@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QCamera>
 #include <QVideoSink>
+#include <QMediaPlayer>
 #include <QMediaCaptureSession>
 #include <QtQmlIntegration/qqmlintegration.h>
 
@@ -109,6 +110,33 @@ inline void Channel::setCaptureSession(QMediaCaptureSession *captureSession) {
     if (m_captureSession == captureSession) return;
     m_captureSession = captureSession;
     emit captureSessionChanged();
+}
+
+class DemoChannel : public AbstractChannel {
+    Q_OBJECT
+    QML_ELEMENT
+    QML_UNCREATABLE("DemoChannel objects are managed by Engine")
+public:
+    explicit DemoChannel(QObject *parent = nullptr);
+    QMediaPlayer *player() const;
+
+public slots:
+    void setPlayer(QMediaPlayer *player);
+
+private:
+    QMediaPlayer *m_player = nullptr;
+};
+
+inline DemoChannel::DemoChannel(QObject *parent)
+    : AbstractChannel("DemoChannel", parent)
+{}
+
+inline QMediaPlayer *DemoChannel::player() const { return m_player; }
+
+inline void DemoChannel::setPlayer(QMediaPlayer *player)
+{
+    if (m_player == player) return;
+    m_player = player;
 }
 
 } // namespace MTGS

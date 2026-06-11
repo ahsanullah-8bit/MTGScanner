@@ -29,7 +29,7 @@ struct ChannelOptions {
 public:
     QString id;
     QString name;
-    int maxInFlight = 16;
+    int maxInFlight = 2;
     float detectionThreshold = 40;
     QList<QString> filters;
     QCameraDevice cameraDevice;

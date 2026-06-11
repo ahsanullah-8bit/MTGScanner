@@ -122,16 +122,10 @@ inline QList<int> nmsBBoxes(const QList<cv::Rect>& boxes,
         return {};
 
     // Filter and sort based on scores
-    std::vector<int> sorted_indices;
+    std::vector<int> sorted_indices(num_boxes, 0);
     sorted_indices.reserve(num_boxes);
-    for (size_t i = 0; i < num_boxes; ++i) {
-        if (scores[i] >= scoreThreshold) {
-            sorted_indices.emplace_back(static_cast<int>(i));
-        }
-    }
-
-    if (sorted_indices.empty())
-        return {};
+    for (size_t i = 0; i < num_boxes; ++i)
+        sorted_indices[i] = static_cast<int>(i);
 
     std::sort(sorted_indices.begin(), sorted_indices.end(),
               [&scores](int idx1, int idx2) {

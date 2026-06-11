@@ -606,12 +606,9 @@ void Engine::startChannel(const QString &channelId)
         return;
     }
 
-    auto abstract_channel = m_channels.value(channelId);
-    if (abstract_channel->metrics()->status() != ChannelStatus::Running) {
-        if (auto channel = qobject_cast<Channel*>(abstract_channel))
-            channel->camera()->start();
-        else if (auto demo_channel = qobject_cast<DemoChannel*>(abstract_channel))
-            demo_channel->player()->play();
+    auto channel = m_channels.value(channelId);
+    if (channel->metrics()->status() != ChannelStatus::Running) {
+        channel->start();
         // EngineWoker will change the status
     }
 }
@@ -623,12 +620,9 @@ void Engine::stopChannel(const QString &channelId)
         return;
     }
 
-    auto abstract_channel = m_channels.value(channelId);
-    if (abstract_channel->metrics()->status() != ChannelStatus::Stopped) {
-        if (auto channel = qobject_cast<Channel*>(abstract_channel))
-            channel->camera()->stop();
-        else if (auto demo_channel = qobject_cast<DemoChannel*>(abstract_channel))
-            demo_channel->player()->pause();
+    auto channel = m_channels.value(channelId);
+    if (channel->metrics()->status() != ChannelStatus::Stopped) {
+        channel->stop();
         // EngineWoker will change the status
     }
 }

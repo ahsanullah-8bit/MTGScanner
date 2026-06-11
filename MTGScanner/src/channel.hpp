@@ -30,6 +30,8 @@ public:
     const ChannelOptions &constOptions() const;
     ChannelMetrics *metrics() const;
     QVideoSink *outVideoSink() const;
+    virtual void start() = 0;
+    virtual void stop() = 0;
 
 public slots:
     void setOptions(const ChannelOptions &options);
@@ -83,6 +85,8 @@ public:
     explicit Channel(QObject *parent = nullptr) : AbstractChannel("Channel", parent) {}
     QCamera *camera() const;
     QMediaCaptureSession *captureSession() const;
+    void start() override;
+    void stop() override;
 
 public slots:
     void setCamera(QCamera *camera);
@@ -99,6 +103,8 @@ private:
 
 inline QCamera* Channel::camera() const { return m_camera; }
 inline QMediaCaptureSession* Channel::captureSession() const { return m_captureSession; }
+inline void Channel::start() { m_camera->start(); }
+inline void Channel::stop() { m_camera->stop(); }
 
 inline void Channel::setCamera(QCamera *camera) {
     if (m_camera == camera) return;
@@ -119,6 +125,8 @@ class DemoChannel : public AbstractChannel {
 public:
     explicit DemoChannel(QObject *parent = nullptr);
     QMediaPlayer *player() const;
+    void start() override;
+    void stop() override;
 
 public slots:
     void setPlayer(QMediaPlayer *player);
@@ -132,6 +140,8 @@ inline DemoChannel::DemoChannel(QObject *parent)
 {}
 
 inline QMediaPlayer *DemoChannel::player() const { return m_player; }
+inline void DemoChannel::start() { m_player->play(); }
+inline void DemoChannel::stop() { m_player->pause(); }
 
 inline void DemoChannel::setPlayer(QMediaPlayer *player)
 {

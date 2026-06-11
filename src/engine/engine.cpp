@@ -361,7 +361,7 @@ void Engine::addChannel(Channel *channel, int status, QScreen *screen)
 
     // Camera Capture setup
     auto *thread = new QThread();
-    auto *capture = new CameraCapture(channel->options().id, channel->options().cameraDevice.id(), channel_raw->captureFps);
+    auto *capture = new CameraCapture(channel->options().id, channel->options().cameraDevice.id(), channel_raw->captureFps, channel_raw->skippedFps);
     capture->setGateway(&channel_raw->asyncSrc->gateway());
     connect(thread, &QThread::finished, capture, &QObject::deleteLater);
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
@@ -457,7 +457,7 @@ void Engine::addDemoChannel(DemoChannel *channel, QScreen *screen)
 
     // Camera Capture setup
     auto *thread = new QThread();
-    auto *capture = new CameraCapture(channel->options().id, channel->options().cameraDevice.id(), channel_raw->captureFps);
+    auto *capture = new CameraCapture(channel->options().id, channel->options().cameraDevice.id(), channel_raw->captureFps, channel_raw->skippedFps);
     capture->setGateway(&channel_raw->asyncSrc->gateway());
     connect(thread, &QThread::finished, capture, &QObject::deleteLater);
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);

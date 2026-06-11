@@ -9,11 +9,13 @@ Q_STATIC_LOGGING_CATEGORY(capture_logger, "mtgs.capture")
 CameraCapture::CameraCapture(const QString &channelId,
                             const QString &cameraId,
                             FramesPerSecond &fps,
+                            FramesPerSecond &skippedFps,
                             QObject* parent)
     : QObject(parent)
     , m_channelId(channelId)
     , m_cameraId(cameraId)
     , m_fps(fps)
+    , m_skippedFps(skippedFps)
 {}
 
 void CameraCapture::setGateway(tf::async_node<tf::continue_msg, FramePtr>::gateway_type *gateway)
@@ -36,8 +38,10 @@ void CameraCapture::onVideoFrameChanged(const QVideoFrame &frame)
     f->cameraId = m_cameraId;
     f->timestamp = QTime::currentTime();
 
-    if (m_gateway)
-        m_gateway->try_put(f);
+    if (!m_gateway || !m_gateway->try_put(f)) {
+        m_frameSequenceCount--;
+        m_skippedFps.update();
+    }
     m_fps.update();
 }
 

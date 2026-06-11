@@ -24,6 +24,7 @@ public:
     CameraCapture(const QString &channelId,
                 const QString &cameraId,
                 FramesPerSecond &fps,
+                FramesPerSecond &skippedFps,
                 QObject*parent = nullptr);
 
 public slots:
@@ -38,6 +39,7 @@ private:
     QString m_cameraId;
     size_t m_frameSequenceCount = 0;
     FramesPerSecond &m_fps;
+    FramesPerSecond &m_skippedFps;
     tbb::flow::async_node<tbb::flow::continue_msg, FramePtr>::gateway_type *m_gateway = nullptr;
 };
 

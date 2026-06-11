@@ -101,6 +101,15 @@ void scaleCoords(const cv::Size &resizedImageSize,
     }
 }
 
+void scaleCoords(const cv::Size &resizedImageSize,
+                const cv::Size &originalImageSize,
+                QList<KeyPoint> &keypoints,
+                float gain, int padX, int padY, bool clip = true)
+{
+    for (auto &point : keypoints)
+        scaleCoords(resizedImageSize, originalImageSize, point, gain, padX, padY, clip);
+}
+
 inline QList<int> nmsBBoxes(const QList<cv::Rect>& boxes,
                                    const QList<float>& scores,
                                    const float scoreThreshold,
@@ -600,13 +609,7 @@ QList<QList<Prediction>> CardDetector::postProcess(const QList<cv::Mat> &batch, 
             const float cy = batch_offsetptr[1 * out_num_detections + i];
             const float w = batch_offsetptr[2 * out_num_detections + i];
             const float h = batch_offsetptr[3 * out_num_detections + i];
-
-            const cv::Size orig_size(batch[batchIndx + b].cols, batch[batchIndx + b].rows);
-            const float gain = std::min(static_cast<float>(resizedSize.height) / orig_size.height, static_cast<float>(resizedSize.width) / orig_size.width);
-            const int pad_x = std::round((resizedSize.width - orig_size.width * gain) / 2.0f);
-            const int pad_y = std::round((resizedSize.height - orig_size.height * gain) / 2.0f);
             cv::Rect coords(cx - w / 2.0f, cy - h / 2.0f, w, h);
-            scaleCoords(resizedSize, orig_size, coords, gain, pad_x, pad_y);
 
             cv::Rect nms_box = coords;
             nms_box.x += class_id * 7880; // arbitrary offset to differentiate classes
@@ -618,9 +621,7 @@ QList<QList<Prediction>> CardDetector::postProcess(const QList<cv::Mat> &batch, 
                 KeyPoint keypoint;
                 keypoint.pt.x = batch_offsetptr[(0 + kp_offset) * out_num_detections + i];
                 keypoint.pt.y = batch_offsetptr[(1 + kp_offset) * out_num_detections + i];
-                // keypoint.visibility = batch_offsetptr[(2 + kp_offset) * out_num_detections + i];
-
-                scaleCoords(resizedSize, orig_size, keypoint, gain, pad_x, pad_y);
+                keypoint.visibility = batch_offsetptr[(2 + kp_offset) * out_num_detections + i];
                 keypoints.push_back(keypoint);
             }
 
@@ -634,10 +635,18 @@ QList<QList<Prediction>> CardDetector::postProcess(const QList<cv::Mat> &batch, 
         // Apply Non-Maximum Suppression (NMS) to eliminate redundant detections
         const QList<int> indices = nmsBBoxes(nms_boxes, scores, m_config.confidence.value_or(0.4f), m_config.iouThreshold.value_or(0.4f));
 
+        const cv::Size orig_size(batch[batchIndx + b].cols, batch[batchIndx + b].rows);
+        const float gain = std::min(static_cast<float>(resizedSize.height) / orig_size.height, static_cast<float>(resizedSize.width) / orig_size.width);
+        const int pad_x = std::round((resizedSize.width - orig_size.width * gain) / 2.0f);
+        const int pad_y = std::round((resizedSize.height - orig_size.height * gain) / 2.0f);
+
         const auto &labels = m_config.names.value();
         QList<Prediction> results;
         results.reserve(indices.size());
         for (const int idx : indices) {
+            scaleCoords(resizedSize, orig_size, boxes[idx], gain, pad_x, pad_y);
+            scaleCoords(resizedSize, orig_size, keypoints_list[idx], gain, pad_x, pad_y);
+
             Prediction prediction;
             prediction.box = boxes[idx];
             prediction.keypoints = keypoints_list[idx];

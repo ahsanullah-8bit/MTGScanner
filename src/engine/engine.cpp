@@ -537,7 +537,7 @@ void Engine::deleteChannel(const ChannelOptions &options)
 
     QSharedPointer<ChannelRaw> raw_channel = nullptr;
     accessor a;
-    if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
+    if (!m_rawChannels.find(a, channel->options().id) || a.empty()) {
         qCCritical(engine_logger) << "Couldn't find a raw channel with id" << channel->options().id;   
         raw_channel = a->second;
     }
@@ -546,17 +546,20 @@ void Engine::deleteChannel(const ChannelOptions &options)
     // Delete
     m_channels.take(options.id)->deleteLater();
     m_channelIdIndexMap.removeOne(options.id);
-    m_rawChannels.erase(options.id);
+    m_rawChannels.erase(a);
 
     emit channelDeleted(options);
 }
 
 void Engine::disconnectChannel(AbstractChannel *channel, QSharedPointer<ChannelRaw> raw_channel)
 {
-    if (auto _channel = qobject_cast<Channel*>(channel))
+    if (auto _channel = qobject_cast<Channel*>(channel)) {
+        _channel->camera()->disconnect();   // This should help avoid a deadlock in the errorOccurred and activeChanged
         _channel->camera()->stop();
-    else if (auto demo_channel = qobject_cast<DemoChannel*>(channel))
+    } else if (auto demo_channel = qobject_cast<DemoChannel*>(channel)) {
+        demo_channel->player()->disconnect();
         demo_channel->player()->stop();
+    }
 
     // Metrics
     disconnect(m_metricsTimer, &QTimer::timeout, channel->metrics(), &ChannelMetrics::fireMetricsUpdate);
@@ -569,17 +572,17 @@ void Engine::disconnectChannel(AbstractChannel *channel, QSharedPointer<ChannelR
 
     // Raw Channel
     if (raw_channel) {
-            raw_channel->capture.worker->setGateway(nullptr);
-            raw_channel->capture.thread->quit();
-            if (!raw_channel->capture.thread->wait(1000)) {
-                qCWarning(engine_logger) << "Capture Thread failed to exit cleanly. Forcing termination for" << channel->options().id;
-                raw_channel->capture.thread->terminate();
-                raw_channel->capture.thread->wait();
-            }
+        raw_channel->capture.worker->setGateway(nullptr);
+        raw_channel->capture.thread->quit();
+        if (!raw_channel->capture.thread->wait(1000)) {
+            qCWarning(engine_logger) << "Capture Thread failed to exit cleanly. Forcing termination for" << channel->options().id;
+            raw_channel->capture.thread->terminate();
+            raw_channel->capture.thread->wait();
+        }
 
-            tf::remove_edge(*(raw_channel->preLimiter), *m_processor);
-            tf::remove_edge(*(raw_channel->asyncSrc),   *(raw_channel->preLimiter));
-            tf::remove_edge(*(raw_channel->postSequencer), *m_uiNotifier);
+        tf::remove_edge(*(raw_channel->preLimiter), *m_processor);
+        tf::remove_edge(*(raw_channel->asyncSrc),   *(raw_channel->preLimiter));
+        tf::remove_edge(*(raw_channel->postSequencer), *m_uiNotifier);
     }
 
     if (auto _channel = qobject_cast<Channel*>(channel)) {

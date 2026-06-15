@@ -535,7 +535,13 @@ void Engine::deleteChannel(const ChannelOptions &options)
     // In case someone wants to opt-out
     emit channelAboutToBeDeleted(options);
 
-    disconnectChannel(channel, nullptr);
+    QSharedPointer<ChannelRaw> raw_channel = nullptr;
+    accessor a;
+    if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
+        qCCritical(engine_logger) << "Couldn't find a raw channel with id" << channel->options().id;   
+        raw_channel = a->second;
+    }
+    disconnectChannel(channel, raw_channel);
 
     // Delete
     m_channels.take(options.id)->deleteLater();
@@ -562,12 +568,8 @@ void Engine::disconnectChannel(AbstractChannel *channel, QSharedPointer<ChannelR
     channel->metrics()->setVisibleCards(nullptr);
 
     // Raw Channel
-    if (!raw_channel) {
-        accessor a;
-        if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
-            auto raw_channel = a->second;
+    if (raw_channel) {
             raw_channel->capture.worker->setGateway(nullptr);
-
             raw_channel->capture.thread->quit();
             if (!raw_channel->capture.thread->wait(1000)) {
                 qCWarning(engine_logger) << "Capture Thread failed to exit cleanly. Forcing termination for" << channel->options().id;
@@ -578,9 +580,6 @@ void Engine::disconnectChannel(AbstractChannel *channel, QSharedPointer<ChannelR
             tf::remove_edge(*(raw_channel->preLimiter), *m_processor);
             tf::remove_edge(*(raw_channel->asyncSrc),   *(raw_channel->preLimiter));
             tf::remove_edge(*(raw_channel->postSequencer), *m_uiNotifier);
-        } else {
-            qCWarning(engine_logger) << "Couldn't find a raw channel with id" << channel->options().id;
-        }
     }
 
     if (auto _channel = qobject_cast<Channel*>(channel)) {

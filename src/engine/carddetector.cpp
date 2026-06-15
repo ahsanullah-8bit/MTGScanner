@@ -71,19 +71,19 @@ void permute(const QList<cv::Mat> &batch,
 
 void scaleCoords(const cv::Size &resizedImageSize,
                 const cv::Size &originalImageSize,
-                cv::Rect &coords,
+                cv::Rect2f &coords,
                 float gain, int padX, int padY, bool clip = true)
 {
-    coords.x = static_cast<int>(std::round((coords.x - padX) / gain));
-    coords.y = static_cast<int>(std::round((coords.y - padY) / gain));
-    coords.width = static_cast<int>(std::round(coords.width / gain));
-    coords.height = static_cast<int>(std::round(coords.height / gain));
+    coords.x = std::round((coords.x - padX) / gain);
+    coords.y = std::round((coords.y - padY) / gain);
+    coords.width = std::round(coords.width / gain);
+    coords.height = std::round(coords.height / gain);
 
     if (clip) {
-        coords.x = std::clamp(coords.x, 0, originalImageSize.width);
-        coords.y = std::clamp(coords.y, 0, originalImageSize.height);
-        coords.width = std::clamp(coords.width, 0, originalImageSize.width - coords.x);
-        coords.height = std::clamp(coords.height, 0, originalImageSize.height - coords.y);
+        coords.x = std::clamp<float>(coords.x, 0.0f, originalImageSize.width);
+        coords.y = std::clamp<float>(coords.y, 0.0f, originalImageSize.height);
+        coords.width = std::clamp<float>(coords.width, 0.0f, originalImageSize.width - coords.x);
+        coords.height = std::clamp<float>(coords.height, 0.0f, originalImageSize.height - coords.y);
     }
 }
 
@@ -119,7 +119,7 @@ inline QList<int> nmsBBoxes(const QList<cv::Rect>& boxes,
     QList<int> result_indices;
     const size_t num_boxes = boxes.size();
     if (num_boxes < 1)
-        return {};
+        return result_indices;
 
     // Filter and sort based on scores
     std::vector<int> sorted_indices(num_boxes, 0);
@@ -578,32 +578,35 @@ QList<QList<Prediction>> CardDetector::postProcess(const QList<cv::Mat> &batch, 
     results_list.reserve(batchSize);
 
     for (size_t b = 0; b < batchSize; ++b) {
-        QList<cv::Rect> boxes;
+        const float *batch_offsetptr = output0_data + b * (out_num_features * out_num_detections); // Jumps b * features * predictions for batch b.
+        const float *card_front_row = batch_offsetptr + 4 * out_num_detections;
+        const float *title_row =      batch_offsetptr + 5 * out_num_detections;
+        const float *card_back_row =  batch_offsetptr + 6 * out_num_detections;
+
+        QList<cv::Rect2f> boxes;
         QList<cv::Rect> nms_boxes;
         QList<QList<KeyPoint>> keypoints_list;
         QList<float> scores;
         QList<int> class_ids;
 
-        const float *batch_offsetptr = output0_data + b * (out_num_features * out_num_detections); // Jumps b * features * predictions for batch b.
-        for (size_t i = 0; i < out_num_detections; ++i) {
-            int class_id = -1;
-            float max_score = 0.0f;
-            for (int c = 0; c < out_num_classes; ++c) {
-                const float score = batch_offsetptr[(4 + c) * out_num_detections + i];
-                if (max_score < score) {
-                    max_score = score;
-                    class_id = c;
-                }
-            }
+        for (size_t col = 0; col < out_num_detections; ++col) {
+            float cf_score = card_front_row[col];
+            float tit_score = title_row[col];
+            float cb_score = card_back_row[col];
+
+            int class_id = 0;
+            float max_score = cf_score;
+            if (tit_score > max_score) { max_score = tit_score; class_id = 1; }
+            if (cb_score > max_score) { max_score = cb_score; class_id = 2; }
 
             if (max_score < m_config.confidence.value_or(0.4f))
                 continue;
 
-            const float cx = batch_offsetptr[0 * out_num_detections + i];
-            const float cy = batch_offsetptr[1 * out_num_detections + i];
-            const float w = batch_offsetptr[2 * out_num_detections + i];
-            const float h = batch_offsetptr[3 * out_num_detections + i];
-            cv::Rect coords(cx - w / 2.0f, cy - h / 2.0f, w, h);
+            const float cx = batch_offsetptr[0 * out_num_detections + col];
+            const float cy = batch_offsetptr[1 * out_num_detections + col];
+            const float w  = batch_offsetptr[2 * out_num_detections + col];
+            const float h  = batch_offsetptr[3 * out_num_detections + col];
+            cv::Rect2f coords(cx - w / 2.0f, cy - h / 2.0f, w, h);
 
             cv::Rect nms_box = coords;
             nms_box.x += class_id * 7880; // arbitrary offset to differentiate classes
@@ -611,11 +614,11 @@ QList<QList<Prediction>> CardDetector::postProcess(const QList<cv::Mat> &batch, 
 
             QList<KeyPoint> keypoints;
             for (int k = 0; k < num_keypoints; ++k) {
-                const int kp_offset = 4 + out_num_classes + k * num_kp_features;
                 KeyPoint keypoint;
-                keypoint.pt.x = batch_offsetptr[(0 + kp_offset) * out_num_detections + i];
-                keypoint.pt.y = batch_offsetptr[(1 + kp_offset) * out_num_detections + i];
-                keypoint.visibility = batch_offsetptr[(2 + kp_offset) * out_num_detections + i];
+                const int kp_offset = 4 + out_num_classes + k * num_kp_features;
+                keypoint.pt.x       = batch_offsetptr[(0 + kp_offset) * out_num_detections + col];
+                keypoint.pt.y       = batch_offsetptr[(1 + kp_offset) * out_num_detections + col];
+                keypoint.visibility = batch_offsetptr[(2 + kp_offset) * out_num_detections + col];
                 keypoints.push_back(keypoint);
             }
 

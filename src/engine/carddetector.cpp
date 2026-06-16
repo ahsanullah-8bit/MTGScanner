@@ -1,9 +1,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <qlist.h>
-#include <qloggingcategory.h>
-#include <qobject.h>
+#include <unordered_map>
 #include <vector>
 #include <numeric>
 #include <stdexcept>
@@ -13,6 +11,7 @@
 #include <QFile>
 #include <QLoggingCategory>
 
+#include <onnxruntime_cxx_api.h>
 #include <onnxruntime_c_api.h>
 #include <opencv2/core/hal/interface.h>
 #include <opencv2/core/types.hpp>
@@ -214,6 +213,20 @@ CardDetector::CardDetector(QSharedPointer<Ort::Env> env, const CardDetectorConfi
             sessionOptions.SetIntraOpNumThreads(2);
             sessionOptions.SetInterOpNumThreads(1);
             sessionOptions.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+
+            auto providers = Ort::GetAvailableProviders();
+            if (std::find(providers.begin(), providers.end(), "OpenVINOExecutionProvider")
+                != providers.end()) {
+                std::unordered_map<std::string, std::string> ov_options;
+                ov_options["device_type"] = "GPU";
+                ov_options["precision"] = "ACCURACY";
+                ov_options["num_of_threads"] = "2";
+                // ov_options["disable_dynamic_shapes"] = "false";
+
+                sessionOptions.AppendExecutionProvider_OpenVINO_V2(ov_options);
+            }
+
+            qCDebug(logger) << "Available providers:" << providers;
         }
 
         m_session = Ort::Session(*m_env, m_config.path.c_str(), sessionOptions);

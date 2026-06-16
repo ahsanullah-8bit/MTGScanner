@@ -17,6 +17,7 @@
 #include <camera/availablecamerasmodel.h>
 #include <camera/cameracapture.h>
 #include <camera/cameramanager.h>
+#include <engine/carddetector.h>
 #include <engine/channelmodel.h>
 #include <engine/channelraw.hpp>
 #include <channel.hpp>
@@ -81,6 +82,8 @@ private:
     QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<FramePtr, tf::continue_msg>>> m_processor;
     QSharedPointer<tf::multifunction_node<FramePtr, std::tuple<tf::continue_msg>>> m_frameDistributor;
     QSharedPointer<tf::function_node<FramePtr>> m_uiNotifier;
+
+    QSharedPointer<CardDetector> m_cardDetector;
 
     tbb::concurrent_hash_map<QString, QSharedPointer<ChannelRaw>> m_rawChannels;
     QHash<QString, AbstractChannel*> m_channels;

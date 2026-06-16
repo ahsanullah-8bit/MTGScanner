@@ -23,6 +23,7 @@
 
 #include <core/frame.hpp>
 #include <engine/channelraw.hpp>
+#include <engine/carddetector.h>
 #include <channel.hpp>
 #include "engine.h"
 
@@ -40,6 +41,23 @@ Engine::Engine(QObject *parent)
     , m_metricsTimer(new QTimer(this))
     , m_channelsModel(new ChannelModel(this))
 {
+    CardDetectorConfig config;
+    config.path = "assets/models/yolo11n-pose.onnx";
+    m_cardDetector = QSharedPointer<CardDetector>::create(nullptr, config, Ort::SessionOptions{nullptr}, Ort::MemoryInfo{nullptr});
+    m_cardDetector->printModelMetadata();
+    m_cardDetector->setColors(QList<cv::Scalar>{
+        cv::Scalar(0, 0, 255),     // Red
+        cv::Scalar(0, 255, 0),     // Green
+        cv::Scalar(255, 0, 0),     // Blue
+        cv::Scalar(0, 255, 255),   // Yellow
+        cv::Scalar(255, 255, 0),   // Cyan
+        cv::Scalar(255, 0, 255),   // Magenta
+        cv::Scalar(0, 165, 255),   // Orange
+        cv::Scalar(203, 192, 255), // Pink
+        cv::Scalar(128, 0, 128),   // Purple
+        cv::Scalar(0, 255, 128)    // Light Green / Mint
+    });
+
     initializeGraph();
 
     // Connect CameraManager to the AvailableCamerasModel
@@ -100,6 +118,7 @@ void Engine::initializeGraph()
         }
 
         // TODO: Process the image. For now, we just pass it through.
+        frame->predictions = m_cardDetector->predict({frame->mat}).at(0);
 
         std::get<0>(ports).try_put(frame);
         std::get<1>(ports).try_put(tf::continue_msg());
@@ -139,6 +158,7 @@ void Engine::initializeGraph()
             channel->fps.update();
         }
         a.release();
+        m_cardDetector->draw(f->mat, f->predictions, false);
 
         // Send the frame
         QImage img(f->mat.data, f->mat.cols, f->mat.rows, f->mat.step, QImage::Format_BGR888);

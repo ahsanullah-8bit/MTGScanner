@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstddef>
 #include <tuple>
 
@@ -22,6 +23,7 @@
 #include <opencv2/highgui.hpp>
 
 #include <core/frame.hpp>
+#include <core/prediction.hpp>
 #include <engine/channelraw.hpp>
 #include <engine/carddetector.h>
 #include <channel.hpp>
@@ -156,6 +158,12 @@ void Engine::initializeGraph()
             }
 
             channel->fps.update();
+            channel->visibleCards = std::count_if(f->predictions.begin(), f->predictions.end(), 
+                [] (const Prediction &p) {
+                    return p.className == "card_front" 
+                        || p.className == "card_back"; 
+                }
+            );
         }
         a.release();
         m_cardDetector->draw(f->mat, f->predictions, false);

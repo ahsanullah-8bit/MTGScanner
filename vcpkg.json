@@ -13,6 +13,10 @@
     {
         "name": "yaml-cpp",
         "version>=": "0.8.0#2"
+    },
+    {
+      "name": "eigen3",
+      "version>=": "3.4.1#1"
     }
   ]
 }

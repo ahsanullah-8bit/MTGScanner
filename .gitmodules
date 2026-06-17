@@ -1,0 +1,3 @@
+[submodule "3rdParty/ByteTrack-cpp"]
+	path = 3rdParty/ByteTrack-cpp
+	url = https://github.com/ahsanullah-8bit/ByteTrack-cpp.git

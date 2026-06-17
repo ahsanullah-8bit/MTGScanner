@@ -8,6 +8,7 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS Quick Multimedia QuickControls2)
 find_package(OpenCV CONFIG REQUIRED)
 find_package(TBB CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
+find_package(Eigen3 CONFIG REQUIRED)
 
 include(cmake/3rdParty/onnxruntime.cmake)
 find_package(onnxruntime CONFIG REQUIRED)
@@ -40,6 +41,7 @@ qt_add_resources(${CMAKE_PROJECT_NAME}App "configuration"
 )
 
 add_subdirectory(MTGScanner)
+add_subdirectory(3rdParty/ByteTrack-cpp)
 
 set_target_properties(${PROJECT_NAME}App PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}

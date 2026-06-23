@@ -48,21 +48,24 @@ void CardProcessor::process(FramePtr frame)
 
     for (size_t i = 0; i < outputs.size(); ++i) {
         const auto output = outputs.at(i);
-        auto &prediction = frame->predictions[tracked_indices.at(i)];
-        prediction.trackerId = output->getTrackId();
+        auto &card = frame->predictions[tracked_indices.at(i)];
+        card.trackerId = output->getTrackId();
 
         // Perspective Crop titles/nameplates of the card at least MAX_CROP_RETRIES and when
         // the area actually changes (i.e. the card is closing to the camera).
-        TrackedCard &tracked_card = m_trackedCards[prediction.trackerId];
+        TrackedCard &tracked_card = m_trackedCards[card.trackerId];
         tracked_card.lostCount = 0; // reset
         bool can_crop = tracked_card.retries < MAX_CROP_RETRIES
-                        && prediction.box.area() > tracked_card.lastBoxArea * 1.35f;
-        if (!can_crop || !prediction.subPredictions)
+                        && card.box.area() > tracked_card.lastBoxArea * 1.35f;
+        if (!can_crop || !card.subPredictions)
             continue;
 
-        for (const auto &p : prediction.subPredictions.value()) {
+        tracked_card.retries++;
+        tracked_card.lastBoxArea = card.box.area();
+
+        for (const auto &np : card.subPredictions.value()) {
             // NOTE: We assume all are titles
-            const auto &points = prediction.keypoints;
+            const auto &points = np.keypoints;
             std::array<cv::Point2f, 4> src_points = {
                 points.at(0).pt, points.at(1).pt,
                 points.at(2).pt, points.at(3).pt
@@ -70,19 +73,17 @@ void CardProcessor::process(FramePtr frame)
 
             const float exp_w = static_cast<float>(TITLE_WIDTH);
             const float exp_h = static_cast<float>(TITLE_HEIGHT);
-            std::array<cv::Point2f, 4> dst_points;
-            dst_points[0] = cv::Point2f(0.0f,  0.0f);  // tl
-            dst_points[1] = cv::Point2f(exp_w, 0.0f);  // tr
-            dst_points[2] = cv::Point2f(exp_w, exp_h); // br
-            dst_points[3] = cv::Point2f(0.0f,  exp_h); // bl
+            std::array<cv::Point2f, 4> dst_points = {
+                cv::Point2f { 0.0f,  0.0f },    // tl
+                cv::Point2f { exp_w, 0.0f },    // tr
+                cv::Point2f ( exp_w, exp_h ),   // br
+                cv::Point2f { 0.0f,  exp_h }    // bl
+            };
     
             cv::Mat nameplate;
             perspectiveCrop(frame->mat, nameplate, src_points, dst_points);
             frame->nameplateCrops.append(nameplate);
         }
-
-        tracked_card.retries++;
-        tracked_card.lastBoxArea = prediction.box.area();
     }
 
     // Remove the lost

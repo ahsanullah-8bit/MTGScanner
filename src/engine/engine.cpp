@@ -11,6 +11,7 @@
 #include <QSettings>
 #include <QQmlEngine>
 #include <QMetaObject>
+#include <QSharedPointer>
 #include <QCameraDevice>
 #include <QMediaDevices>
 #include <QGuiApplication>
@@ -19,6 +20,7 @@
 
 #include <onnxruntime_cxx_api.h>
 #include <opencv2/core/mat.hpp>
+#include <opencv2/core/types.hpp>
 #include <opencv2/core/persistence.hpp>
 #include <opencv2/highgui.hpp>
 
@@ -26,6 +28,7 @@
 #include <core/prediction.hpp>
 #include <engine/channelraw.hpp>
 #include <engine/carddetector.h>
+#include <engine/cardprocessor.h>
 #include <channel.hpp>
 #include "engine.h"
 
@@ -164,6 +167,9 @@ void Engine::initializeGraph()
                         || p.className == "card_back"; 
                 }
             );
+            
+            if (channel->cardProcessor)
+                channel->cardProcessor->process(f);
         }
         a.release();
         m_cardDetector->draw(f->mat, f->predictions, false);
@@ -532,6 +538,7 @@ void Engine::addDemoChannel(DemoChannel *channel, QScreen *screen)
 
     capture->moveToThread(thread);
     channel_raw->capture = {thread, capture};
+    channel_raw->cardProcessor = QSharedPointer<CardProcessor>::create(30, 60);
     channel_raw->options = channel->options();
     channel_raw->status.storeRelaxed(Engine::Running);
     channel_raw->capture.thread->start();

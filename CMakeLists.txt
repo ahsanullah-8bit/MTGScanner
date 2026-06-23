@@ -28,6 +28,8 @@ qt_add_executable(${PROJECT_NAME}App
     src/core/prediction.hpp
     src/engine/carddetector.cpp
     src/engine/channelraw.hpp
+    src/engine/cardprocessor.h
+    src/engine/cardprocessor.cpp
     src/engine/channelmodel.h
     src/engine/channelmodel.cpp
     src/engine/engine.h
@@ -67,6 +69,7 @@ target_link_libraries(${PROJECT_NAME}App
     ${OpenCV_LIBS}
     onnxruntime::onnxruntime
     yaml-cpp::yaml-cpp
+    bytetrack
 
     MTGScanner  # the static library, just for channeloptions.hpp
     MTGScannerplugin

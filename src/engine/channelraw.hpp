@@ -7,6 +7,7 @@
 #include <QSharedPointer>
 
 #include <core/frame.hpp>
+#include <engine/cardprocessor.h>
 #include <framespersecond.hpp>
 #include <channeloptions.hpp>
 
@@ -23,6 +24,8 @@ struct ChannelRaw {
     QSharedPointer<tf::async_node<tf::continue_msg, FramePtr>> asyncSrc;
     QSharedPointer<tf::limiter_node<FramePtr>> preLimiter;
     QSharedPointer<tf::sequencer_node<FramePtr>> postSequencer;
+
+    QSharedPointer<CardProcessor> cardProcessor;
 
     FramesPerSecond fps;
     FramesPerSecond skippedFps;

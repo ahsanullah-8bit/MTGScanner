@@ -82,7 +82,7 @@ void CardProcessor::process(FramePtr frame)
     
             cv::Mat nameplate;
             perspectiveCrop(frame->mat, nameplate, src_points, dst_points);
-            frame->nameplateCrops.append(nameplate);
+            card.crops->append(nameplate);
         }
     }
 

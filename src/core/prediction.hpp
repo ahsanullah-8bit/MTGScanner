@@ -5,6 +5,7 @@
 
 #include <QList>
 
+#include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 
 namespace MTGS {
@@ -22,7 +23,8 @@ struct Prediction {
     QString className;
     int classId;
     size_t trackerId = -1;
-
+    
+    std::optional<QList<cv::Mat>> crops;
     std::optional<QList<Prediction>> subPredictions;
 };
 

@@ -23,7 +23,6 @@ struct Frame {
 
     cv::Mat mat;
     QList<Prediction> predictions;
-    QList<cv::Mat> nameplateCrops;
     QVideoFrame originalFrame;
 };
 

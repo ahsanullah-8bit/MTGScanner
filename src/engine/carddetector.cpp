@@ -307,7 +307,7 @@ QList<QList<Prediction>> CardDetector::predict(const QList<cv::Mat> &batch)
     return predictions_list;
 }
 
-void CardDetector::draw(cv::Mat &image, const QList<Prediction> &predictions, bool drawBBox, float maskAlpha)
+void CardDetector::draw(cv::Mat &image, const QList<Prediction> &predictions, bool drawBBox, bool drawKeypoints, bool drawSkeletons, float maskAlpha)
 {
     if (predictions.empty())
         return;
@@ -358,20 +358,24 @@ void CardDetector::draw(cv::Mat &image, const QList<Prediction> &predictions, bo
                         font_thickness, cv::LINE_AA);
         }
         
-        // Draw keypoints
         const QList<KeyPoint> &kpts = prediction.keypoints;
         const size_t num_kpts = kpts.size();
-        for (size_t i = 0; i < num_kpts; ++i)
-            cv::circle(image, kpts[i].pt, kpt_radius, m_colors[i % m_colors.size()], -1, cv::LINE_AA);
+        if (drawKeypoints) {
+            // Draw keypoints
+            for (size_t i = 0; i < num_kpts; ++i)
+                cv::circle(image, kpts[i].pt, kpt_radius, m_colors[i % m_colors.size()], -1, cv::LINE_AA);
+        }
 
-        // Draw skeleton connections
-        const auto &skeleton = m_config.kptSkeleton.value();
-        for (size_t j = 0; j < skeleton.size(); ++j) {
-            const auto [src, dst] = skeleton[j];
-            if (src < num_kpts && dst < num_kpts) {
-                cv::line(image, kpts[src].pt, kpts[dst].pt,
-                         m_colors[src % m_colors.size()],
-                         line_thickness, cv::LINE_AA);
+        if (drawSkeletons) {
+            // Draw skeleton connections
+            const auto &skeleton = m_config.kptSkeleton.value();
+            for (size_t j = 0; j < skeleton.size(); ++j) {
+                const auto [src, dst] = skeleton[j];
+                if (src < num_kpts && dst < num_kpts) {
+                    cv::line(image, kpts[src].pt, kpts[dst].pt,
+                             m_colors[src % m_colors.size()],
+                             line_thickness, cv::LINE_AA);
+                }
             }
         }
     }

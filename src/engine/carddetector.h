@@ -39,7 +39,7 @@ class CardDetector {
 public:
     explicit CardDetector(QSharedPointer<Ort::Env> env, const CardDetectorConfig &config, Ort::SessionOptions sessionOptions, Ort::MemoryInfo memoryInfo);
     QList<QList<Prediction>> predict(const QList<cv::Mat> &batch);
-    void draw(cv::Mat &image, const QList<Prediction> &predictions, bool drawBBox = true, float maskAlpha = 0.3f);
+    void draw(cv::Mat &image, const QList<Prediction> &predictions, bool drawBBox = true, bool drawKeypoints = true, bool drawSkeletons = true, float maskAlpha = 0.3f);
     void printModelMetadata();
 
     bool hasDynamicBatch();

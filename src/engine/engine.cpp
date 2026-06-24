@@ -172,7 +172,7 @@ void Engine::initializeGraph()
                 channel->cardProcessor->process(f);
         }
         a.release();
-        m_cardDetector->draw(f->mat, f->predictions, false);
+        m_cardDetector->draw(f->mat, f->predictions, true, true, false);
 
         // Send the frame
         QImage img(f->mat.data, f->mat.cols, f->mat.rows, f->mat.step, QImage::Format_BGR888);

@@ -1,6 +1,7 @@
 #include <QObject>
 #include <QQmlEngine>
-#include <QGuiApplication>
+#include <QApplication>
+#include <QQuickWindow>
 #include <QQmlApplicationEngine>
 #include <QScopedPointer>
 
@@ -8,7 +9,7 @@
 
 int main(int argc, char *argv[])
 {
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
 
     QCoreApplication::setOrganizationName("MadStudio");
     QCoreApplication::setOrganizationDomain("MadStudio.io");
@@ -26,6 +27,10 @@ int main(int argc, char *argv[])
         Qt::QueuedConnection);
 
     engine.loadFromModule("MTGScanner", "Main");
+
+    QObject *root_obj = engine.rootObjects().at(0);
+    QQuickWindow *window = qobject_cast<QQuickWindow*>(root_obj);
+    mtgs_engine->initializeOutputWindows(window);
 
     return app.exec();
 }

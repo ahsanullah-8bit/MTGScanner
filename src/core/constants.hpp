@@ -9,4 +9,6 @@ constexpr int TITLE_HEIGHT = 44;
 constexpr int MAX_CROP_RETRIES = 5;
 constexpr float MIN_INTERSECTION_RATIO = 0.90f; // of sub predictions
 
+constexpr char CROP_ID_FORMAT[] = "%1_%2";
+
 }

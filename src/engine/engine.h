@@ -11,6 +11,7 @@
 #include <QString>
 #include <QVideoSink>
 #include <QSettings>
+#include <QQuickWindow>
 #include <QSharedPointer>
 #include <QCameraDevice>
 
@@ -20,6 +21,7 @@
 #include <engine/carddetector.h>
 #include <engine/channelmodel.h>
 #include <engine/channelraw.hpp>
+#include <output/outputwindow.h>
 #include <channel.hpp>
 
 namespace MTGS {
@@ -63,6 +65,7 @@ public slots:
     void stopChannel(const QString &channelId);
     void registerChannelOutSink(const QString &channelId, QVideoSink *videoSink);
     void unRegisterChannelOutSink(const QString &channelId);
+    void initializeOutputWindows(QQuickWindow *mainWindow);
 
 signals:
     void channelAdded(const MTGS::ChannelOptions &options);
@@ -87,6 +90,7 @@ private:
 
     tbb::concurrent_hash_map<QString, QSharedPointer<ChannelRaw>> m_rawChannels;
     QHash<QString, AbstractChannel*> m_channels;
+    QHash<QString, OutputWindow*> m_outputWindows;
     QList<QString> m_channelIdIndexMap;
 
     AvailableCamerasModel *m_availableCamerasModel = nullptr;
@@ -94,6 +98,8 @@ private:
     ChannelModel *m_channelsModel = nullptr;
     
     QTimer *m_metricsTimer = nullptr;
+
+    QQuickWindow *m_mainQmlWindow = nullptr;
 };
 
 } // namespace MTGS

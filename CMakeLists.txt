@@ -4,7 +4,7 @@ project(MTGScanner VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Quick Multimedia QuickControls2)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Quick Multimedia QuickControls2 Widgets)
 find_package(OpenCV CONFIG REQUIRED)
 find_package(TBB CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
@@ -34,6 +34,12 @@ qt_add_executable(${PROJECT_NAME}App
     src/engine/channelmodel.cpp
     src/engine/engine.h
     src/engine/engine.cpp
+    src/output/nameplatdelegate.h
+    src/output/nameplatdelegate.cpp
+    src/output/nameplatemodel.h
+    src/output/nameplatemodel.cpp
+    src/output/outputwindow.cpp
+    src/output/outputwindow.cpp
 )
 
 qt_add_resources(${CMAKE_PROJECT_NAME}App "configuration"
@@ -64,6 +70,7 @@ target_link_libraries(${PROJECT_NAME}App
 
     Qt6::Quick
     Qt6::Multimedia
+    Qt6::Widgets
 
     TBB::tbb
     ${OpenCV_LIBS}

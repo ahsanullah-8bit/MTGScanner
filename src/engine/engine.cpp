@@ -1,3 +1,5 @@
+#include "engine.h"
+
 #include <algorithm>
 #include <cstddef>
 #include <tuple>
@@ -22,6 +24,7 @@
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 #include <opencv2/core/persistence.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
 
 #include <core/frame.hpp>
@@ -29,8 +32,9 @@
 #include <engine/channelraw.hpp>
 #include <engine/carddetector.h>
 #include <engine/cardprocessor.h>
+#include <output/nameplatemodel.h>
+#include <output/outputwindow.h>
 #include <channel.hpp>
-#include "engine.h"
 
 namespace MTGS {
 
@@ -350,14 +354,26 @@ void Engine::loadFromSettings()
 
 void Engine::receiveFrameNotification(const FramePtr& frame)
 {
-    if (!m_channels.contains(frame->channelId)) {
+    AbstractChannel *channel = m_channels.value(frame->channelId, nullptr);
+    if (!channel) {
         qCDebug(engine_logger) << QString("Stranded frame %1 from channel %2").arg(frame->sequenceId).arg(frame->channelId);
         return;
     }
 
-    auto videoSink = m_channels.value(frame->channelId)->outVideoSink();
+    auto videoSink = channel->outVideoSink();
     if (videoSink)
         videoSink->setVideoFrame(frame->originalFrame);
+
+    OutputWindow *window = m_outputWindows.value(frame->channelId, nullptr);
+    if (!window)
+        return;
+    
+    for(const auto &p : frame->predictions) {
+        if (!p.crops) continue;
+
+        for (const auto &crop : p.crops.value())
+            window->model<NameplateModel>()->addNameplate(p.trackerId, crop);
+    }
 }
 
 void Engine::addChannel(Channel *channel, int status, QScreen *screen)
@@ -553,6 +569,17 @@ void Engine::addDemoChannel(DemoChannel *channel, QScreen *screen)
         return;
     }
 
+    auto model = new NameplateModel(20);
+    OutputWindow *window = new OutputWindow(channel->options().windowName,
+                                            QRect(50, 50, 400, 400),
+                                            screen, 
+                                            model,
+                                            channel);
+    model->setParent(window);
+    m_outputWindows.emplace(channel->options().id, window);
+    if (m_mainQmlWindow)
+        window->open(m_mainQmlWindow);
+
     channel->player()->play();
     m_channels.emplace(channel->options().id, channel);
     m_channelIdIndexMap.append(channel->options().id);
@@ -680,6 +707,15 @@ void Engine::unRegisterChannelOutSink(const QString &channelId)
         return;
 
     m_channels.value(channelId)->setOutVideoSink(nullptr);
+}
+
+void Engine::initializeOutputWindows(QQuickWindow *mainWindow)
+{
+    for (auto [_, window] : m_outputWindows.asKeyValueRange()) {
+        window->open(mainWindow);
+    }
+
+    m_mainQmlWindow = mainWindow;
 }
 
 } // namespace MTGS

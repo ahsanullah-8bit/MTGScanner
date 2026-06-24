@@ -12,6 +12,7 @@ ApplicationWindow {
     height: 900
     visible: true
     title: qsTr("MTGScanner")
+    objectName: "MTGSMainWindow"
 
     SideBar {
         id: sidebar

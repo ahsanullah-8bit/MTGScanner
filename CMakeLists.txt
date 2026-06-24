@@ -92,6 +92,7 @@ install(TARGETS ${PROJECT_NAME}App
 
 # Copy the compile_commands.json for tools like clangd
 if (CMAKE_EXPORT_COMPILE_COMMANDS)
+    message(STATUS "Copying compile_commands.json")
     execute_process(
         COMMAND ${CMAKE_COMMAND} -E copy_if_different 
         "${CMAKE_BINARY_DIR}/compile_commands.json" 

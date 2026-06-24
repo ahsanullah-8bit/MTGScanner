@@ -7,6 +7,7 @@
 #include <ByteTrack/Object.h>
 #include <ByteTrack/Rect.h>
 #include <ByteTrack/BYTETracker.h>
+#include <opencv2/core/mat.hpp>
 #include <opencv2/core/types.hpp>
 #include <opencv2/imgproc.hpp>
 
@@ -59,6 +60,9 @@ void CardProcessor::process(FramePtr frame)
                         && card.box.area() > tracked_card.lastBoxArea * 1.35f;
         if (!can_crop || !card.subPredictions)
             continue;
+
+        if (!card.crops)
+            card.crops = QList<cv::Mat>();
 
         tracked_card.retries++;
         tracked_card.lastBoxArea = card.box.area();

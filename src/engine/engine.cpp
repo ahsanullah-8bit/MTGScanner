@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <tuple>
 
+#include <QUrl>
+#include <QFile>
 #include <QList>
 #include <QUuid>
 #include <QObject>
@@ -78,15 +80,18 @@ Engine::Engine(QObject *parent)
 
 #ifndef NDEBUG
     // Add a demo channel
-    DemoChannel *channel = new DemoChannel(this);
-    channel->options().id = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    channel->options().name = "Demo";
-    channel->setPlayer(new QMediaPlayer(channel));
-    channel->player()->setSource(QUrl("assets/videos/demo.mp4"));
-    channel->player()->setVideoSink(new QVideoSink(channel->player()));
-    channel->setMetrics(new ChannelMetrics(channel));
+    QUrl demo_file = QUrl("assets/videos/demo.mp4");
+    if (demo_file.isValid() && QFile::exists(demo_file.path())) {
+        DemoChannel *channel = new DemoChannel(this);
+        channel->options().id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        channel->options().name = "Demo";
+        channel->setPlayer(new QMediaPlayer(channel));
+        channel->player()->setSource(demo_file);
+        channel->player()->setVideoSink(new QVideoSink(channel->player()));
+        channel->setMetrics(new ChannelMetrics(channel));
 
-    addDemoChannel(channel);
+        addDemoChannel(channel);
+    }
 #endif
 
     // Load the saved channels

@@ -1,4 +1,4 @@
-# MTGSCanner
+# MTGScanner
 MTGScanner is a cross-platform Magic The Gathering card detector, that captures video stream from 4 or more cameras, detects the cards, tracks them, extracts their nameplates and displays them on their output windows, which can then be captured by streaming tools like OBS Studio. Basically, a tool to capture the cards drawn by 4 people in a MTG table-top game, while you are streaming. The idea was proposed by a client.
 
 ## Usage
@@ -6,9 +6,9 @@ To use MTGScanner, you need to make sure your cameras are connected to your comp
 
 * Click on **Add Channel**, select a camera, preview the camera output, and click **Next**.
 * Set **Channel Name** and Detection settings (if any), then click **Next**.
-* Configure Output Window by setting options. Default **Window Name** is `<channel_name> Out`, set position geometry, and set **Target Monitor** on which the window should appear on. In case of my client, he wanted to use virtual displays. At last, click **Create Channel**.
+* Configure Output Window by setting options. Default **Window Name** is `<channel_name> Out`, set window **geometry**, and **Target Monitor** on which the window should appear. In case of my client, he wanted to use virtual displays. At last, click **Create Channel**.
 
-You should have a basic channel setup. Main Dashboard preview will display a scanned stream preview, camera and output window information, and metrics at the bottom. You can **Start/Stop** each channel by clicking the play/pause button.
+You should have a basic channel setup. On Main Dashboard, you'll see a scanned stream preview, camera and output window information, and metrics of the channel at the bottom. You can **Start/Stop** each channel by clicking the play/pause button (top-right).
 
 > [!TIP]  
 > Never bring the whole deck in front of the camera, instead:
@@ -17,7 +17,7 @@ You should have a basic channel setup. Main Dashboard preview will display a sca
 >   * Move them out in different directions, if possible. But you don't need to, if you're scanning cards with 2-5 seconds gap in between. *Helps the tracker forget older cards.*
 
 > [!NOTE]
-> * If you **plug-out a camera** while it is being used by MTGScanner and plug it back in, the Channel may already be corrupt. This behavior is imposed by how different Operating Systems handle input devices, not MTGScanner. It may try to recover the same camera, if you plug-in the camera through the same port and restart the application. But there's no gaurantee the camera will have similar properties, hence a different camera.
+> * If you **plug-out a camera** while it is being used by MTGScanner and plug it back in, the Channel may already be corrupt. This behavior is imposed by how different Operating Systems handle input devices, not MTGScanner. It may try to recover the same camera, if you plug-in the camera through the same port and restart the application. But the OS doesn't gaurantee the camera will have similar properties, hence a different camera.
 > * If you **accidently close an output window**, you can launch it again using the re-launch button in the **Output Window** information card.
 > * If you want to **change the current configuration**, you have to delete the channel and add it again.
 > * **No camera can be reused while its active**. This is also imposed by the OS, not MTGScanner.
@@ -114,7 +114,7 @@ The Pose Estimation dataset (of 285 images) contains images from the internet, t
 > As of now, the application expects this model with the exact number of classes (i.e. `card_front`, `title` and `card_back`) and output layout, for performance reasons. The behavior is unknown, in case of any other model.
 
 #### Build from Source
-Open Terminal or `x64 Native Tools Command Prompt for VS` and `cd` directory somewhere and do:
+Open Terminal or `x64 Native Tools Command Prompt for VS`, `cd` directory somewhere and do:
 
 ```bash
 # Clone the project

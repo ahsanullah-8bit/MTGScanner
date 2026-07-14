@@ -85,6 +85,7 @@ Engine::Engine(QObject *parent)
         DemoChannel *channel = new DemoChannel(this);
         channel->options().id = QUuid::createUuid().toString(QUuid::WithoutBraces);
         channel->options().name = "Demo";
+        channel->options().windowGeometry = QRect(50, 50, 400, 400);
         channel->setPlayer(new QMediaPlayer(channel));
         channel->player()->setSource(demo_file);
         channel->player()->setVideoSink(new QVideoSink(channel->player()));
@@ -377,7 +378,8 @@ void Engine::receiveFrameNotification(const FramePtr& frame)
         if (!p.crops) continue;
 
         for (const auto &crop : p.crops.value())
-            window->model<NameplateModel>()->addNameplate(p.trackerId, crop);
+            if (auto model = window->model())
+                model->addNameplate(p.trackerId, crop);
     }
 }
 
@@ -575,13 +577,13 @@ void Engine::addDemoChannel(DemoChannel *channel, QScreen *screen)
     }
 
     auto model = new NameplateModel(20);
-    OutputWindow *window = new OutputWindow(channel->options().windowName,
-                                            QRect(50, 50, 400, 400),
+    OutputWindow *window = new OutputWindow(true,
                                             true,
-                                            true,
-                                            screen, 
                                             model,
-                                            channel);
+                                            nullptr);
+    window->setWindowTitle(channel->options().windowName);
+    window->setGeometry(channel->options().windowGeometry);
+    window->setScreen(screen);
     model->setParent(window);
     m_outputWindows.emplace(channel->options().id, window);
     if (m_mainQmlWindow)

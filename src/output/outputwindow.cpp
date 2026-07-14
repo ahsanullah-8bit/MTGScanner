@@ -14,28 +14,12 @@
 
 namespace MTGS {
 
-TransparentWindow::TransparentWindow(QWidget *parent, Qt::WindowFlags f)
-    : QWidget(parent, f)
+OutputWindow::OutputWindow(bool transparent, bool frameless, NameplateModel *model, QWidget *parent)
+    : QWidget(parent, frameless ? Qt::Window | Qt::FramelessWindowHint : Qt::Window)
 {
-    setAttribute(Qt::WA_TranslucentBackground, true);
-}
+    setAttribute(Qt::WA_TranslucentBackground, transparent);
 
-OutputWindow::OutputWindow(const QString &name, const QRect &geometry, bool transparent, bool frameless, QScreen *screen, NameplateModel *model, QObject *parent)
-    : QObject(parent)
-{
-    Qt::WindowFlags f = Qt::Window;
-    if (frameless)
-        f |= Qt::FramelessWindowHint;
-
-    if (transparent)
-        m_window = new TransparentWindow(nullptr, f);
-    else
-        m_window = new QWidget(nullptr, Qt::Window);
-
-    m_window->setWindowTitle(name);
-    m_window->setGeometry(geometry);
-
-    m_listview = new QListView(m_window);
+    m_listview = new QListView(this);
     m_listview->setModel(model);
     m_listview->setItemDelegate(new NameplateDelegate(m_listview));
     m_listview->setResizeMode(QListView::Adjust);
@@ -48,30 +32,27 @@ OutputWindow::OutputWindow(const QString &name, const QRect &geometry, bool tran
     }
     m_listview->setFrameShape(QFrame::NoFrame);
 
-    m_window->setLayout(new QVBoxLayout(m_window));
-    m_window->layout()->addWidget(m_listview);
+    setLayout(new QVBoxLayout(this));
+    layout()->addWidget(m_listview);
 }
 
 OutputWindow::~OutputWindow()
-{
-    m_window->close();
-    m_window->deleteLater();
-}
+{}
 
 void OutputWindow::setModel(NameplateModel *model)
 {
     m_listview->setModel(model);
 }
 
-void OutputWindow::open(QWindow *mainWindow)
+void OutputWindow::open(QWindow *transientParent)
 {
-    m_window->show();
-    m_window->windowHandle()->setTransientParent(mainWindow);
+    show();
+    windowHandle()->setTransientParent(transientParent);
 }
 
-void OutputWindow::close()
+NameplateModel *OutputWindow::model() const
 {
-    m_window->close();
+    return qobject_cast<NameplateModel*>(m_listview->model());
 }
 
 }

@@ -577,6 +577,8 @@ void Engine::addDemoChannel(DemoChannel *channel, QScreen *screen)
     auto model = new NameplateModel(20);
     OutputWindow *window = new OutputWindow(channel->options().windowName,
                                             QRect(50, 50, 400, 400),
+                                            true,
+                                            true,
                                             screen, 
                                             model,
                                             channel);

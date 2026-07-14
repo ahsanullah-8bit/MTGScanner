@@ -10,10 +10,15 @@
 
 namespace MTGS {
 
+class TransparentWindow : public QWidget {
+public:
+    TransparentWindow(QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
+};
+
 class OutputWindow : public QObject {
     Q_OBJECT
 public:
-    explicit OutputWindow(const QString &name, const QRect &geometry, QScreen *screen = nullptr, NameplateModel *model = nullptr, QObject *parent = nullptr);
+    explicit OutputWindow(const QString &name, const QRect &geometry, bool transparent = true, bool frameless = true, QScreen *screen = nullptr, NameplateModel *model = nullptr, QObject *parent = nullptr);
     ~OutputWindow();
     void setModel(NameplateModel *model);
     void open(QWindow *mainWindow);

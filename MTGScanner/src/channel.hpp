@@ -6,6 +6,7 @@
 #include <QScreen>
 #include <QVideoSink>
 #include <QMediaPlayer>
+#include <QGuiApplication>
 #include <QMediaCaptureSession>
 #include <QtQmlIntegration/qqmlintegration.h>
 
@@ -41,6 +42,7 @@ public slots:
     void setMetrics(ChannelMetrics *metrics);
     void setOutVideoSink(QVideoSink *outVideoSink);
     void setOutputWindowScreen(QScreen *outputWindowScreen);
+    void setOutputWindowScreenByName(const QString &name);
 
 signals:
     void optionsChanged();
@@ -84,6 +86,21 @@ inline void AbstractChannel::setOutVideoSink(QVideoSink *outVideoSink) {
 inline void AbstractChannel::setOutputWindowScreen(QScreen *outputWindowScreen) {
     if (m_outputWindowScreen == outputWindowScreen) return;
     m_outputWindowScreen = outputWindowScreen;
+    emit outputWindowScreenChanged();
+}
+
+inline void AbstractChannel::setOutputWindowScreenByName(const QString &name) {
+    auto screens = QGuiApplication::screens();
+    for (const auto screen : screens)
+        if (screen->name() == name) {
+            m_outputWindowScreen = screen;
+            break;
+        }
+
+    // Just in case, the screen got unplugged.
+    if (!m_outputWindowScreen)
+        m_outputWindowScreen = QGuiApplication::primaryScreen();
+    
     emit outputWindowScreenChanged();
 }
 

@@ -294,11 +294,27 @@ Dialog {
                             Layout.fillWidth: true
                             Layout.columnSpan: 2
 
-                            currentIndex: 0
-                            model: ["Primary Monitor", "Secondary Monitor (Right)", "Secondary Monitor (Left)"]
-                            onCurrentTextChanged: {
-                                if (channel)
-                                    channel.options.screenName = currentText
+                            model: Application.screens // ["Primary Monitor", "Secondary Monitor (Right)", "Secondary Monitor (Left)"]
+                            textRole: "name"
+
+                            Component.onCompleted: {
+                                if (channel && channel.outputWindowScreen && Application.screens) {
+                                    let index = -1
+                                    for (var i = 0; i < Application.screens.length; ++i) {
+                                        if (Application.screens[i].name === channel.outputWindowScreen.name) {
+                                            index = i
+                                            break
+                                        }
+                                    }
+                                    currentIndex = (index !== -1) ? index : 0
+                                } else {
+                                    currentIndex = 0
+                                }
+                            }
+
+                            onActivated: (index) => {
+                                if (channel && Application.screens[index])
+                                    channel.setOutputWindowScreenByName(Application.screens[index].name)
                             }
                         }
                     }

@@ -220,6 +220,7 @@ Channel *Engine::createChannel()
 {
     Channel *channel = new Channel(this);
     channel->options().id = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    channel->options().windowGeometry = QRect(50, 50, 400, 400);
     channel->setCamera(new QCamera(channel));
     channel->setCaptureSession(new QMediaCaptureSession(channel));
     channel->captureSession()->setCamera(channel->camera());

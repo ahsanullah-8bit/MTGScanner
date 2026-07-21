@@ -115,6 +115,7 @@ Dialog {
                             if (channel === null)
                                 return
                             channel.options.name = text
+                            channel.options.windowName = text + " Output"
                         }
                     }
                     Label {
@@ -212,7 +213,7 @@ Dialog {
                             Layout.fillWidth: true
 
                             placeholderText: "Window Name"
-                            text: channel ? channel.options.name + " Out" : "Window"
+                            text: channel ? channel.options.windowName : "Window"
                             onTextEdited: {
                                 if (channel)
                                     channel.options.windowName = text

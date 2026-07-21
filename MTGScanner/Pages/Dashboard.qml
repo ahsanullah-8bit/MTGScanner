@@ -106,9 +106,9 @@ Page {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                winName: channel ? channel.options.windowName : "Dummy Window Name"
-                geometry: channel ? channel.options.windowGeometry : [0, 0, 100, 100]
-                screenName: channel ? channel.options.screenName : "Dummy Screen"
+                winName: channel ? channel.options.windowName : "Invalid Window Name"
+                geometry: channel ? channel.options.windowGeometry : [-1, -1, -1, -1]
+                screenName: channel ? channel.options.screenName : "Invalid Screen"
             }
         }
 

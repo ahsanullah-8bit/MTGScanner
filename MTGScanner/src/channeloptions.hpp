@@ -20,8 +20,6 @@ struct ChannelOptions {
     Q_PROPERTY(QCameraDevice cameraDevice MEMBER cameraDevice)
     Q_PROPERTY(QString windowName MEMBER windowName)
     Q_PROPERTY(QRect windowGeometry MEMBER windowGeometry)
-    Q_PROPERTY(QString screenSerialNo MEMBER screenSerialNo)
-    Q_PROPERTY(QString screenName MEMBER screenName)
 
     QML_VALUE_TYPE(channelOptions)
     QML_CONSTRUCTIBLE_VALUE
@@ -36,8 +34,6 @@ public:
     // Output
     QString windowName;
     QRect windowGeometry;
-    QString screenSerialNo;
-    QString screenName;
 
     // TODO
     Q_INVOKABLE bool isValid() const {
@@ -55,9 +51,7 @@ public:
                lhs.filters == rhs.filters &&
                lhs.cameraDevice == rhs.cameraDevice &&
                lhs.windowName == rhs.windowName &&
-               lhs.windowGeometry == rhs.windowGeometry &&
-               lhs.screenSerialNo == rhs.screenSerialNo &&
-               lhs.screenName == rhs.screenName;
+               lhs.windowGeometry == rhs.windowGeometry;
     }
 
     friend bool operator!=(const ChannelOptions& lhs, const ChannelOptions& rhs) {

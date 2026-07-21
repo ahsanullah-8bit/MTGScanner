@@ -90,6 +90,7 @@ Engine::Engine(QObject *parent)
         channel->player()->setSource(demo_file);
         channel->player()->setVideoSink(new QVideoSink(channel->player()));
         channel->setMetrics(new ChannelMetrics(channel));
+        channel->setOutputWindowScreen(QGuiApplication::primaryScreen());
 
         addDemoChannel(channel);
     }
@@ -225,6 +226,7 @@ Channel *Engine::createChannel()
     channel->setCaptureSession(new QMediaCaptureSession(channel));
     channel->captureSession()->setCamera(channel->camera());
     channel->setMetrics(new ChannelMetrics(channel));
+    channel->setOutputWindowScreen(QGuiApplication::primaryScreen());
 
     QQmlEngine::setObjectOwnership(channel, QQmlEngine::CppOwnership);
 
@@ -299,8 +301,8 @@ void Engine::saveToSettings()
         settings.setValue("cameraDeviceDesc", options.cameraDevice.description());
         settings.setValue("winName", options.windowName);
         settings.setValue("winGeometry", options.windowGeometry);
-        settings.setValue("screenSerialNo", options.screenSerialNo);
-        settings.setValue("screenName", options.screenName);
+        settings.setValue("screenSerialNo", it.value()->outputWindowScreen()->serialNumber());
+        settings.setValue("screenName", it.value()->outputWindowScreen()->name());
         settings.setValue("status", it.value()->metrics()->status());
     }
 
@@ -332,11 +334,11 @@ void Engine::loadFromSettings()
         auto camera_opt = m_cameraMngr->findBy(camera_id, camera_desc);
 
         // Verify Screen
-        options.screenSerialNo = settings.value("screenSerialNo").toString();
-        options.screenName = settings.value("screenName").toString();
-        const auto screen_it = std::find_if(screens.begin(), screens.end(),
-            [&options] (QScreen *s) {
-                return s->serialNumber() == options.screenSerialNo || s->name() == options.screenName;
+        QString screen_serial_no = settings.value("screenSerialNo").toString();
+        QString screen_name = settings.value("screenName").toString();
+        const auto screen_it = std::find_if(screens.cbegin(), screens.cend(),
+            [&] (QScreen *s) {
+                return s->serialNumber() == screen_serial_no || s->name() == screen_name;
             }
         );
 
@@ -350,18 +352,11 @@ void Engine::loadFromSettings()
             channelStatus = ChannelStatus::Stopped;
         }
 
-        QScreen *screen = nullptr;
-        if (screen_it == screens.end()) {
-            // Launch the window in the primary screen.
-            screen = QGuiApplication::primaryScreen();
-            options.screenSerialNo = screen->serialNumber();
-            options.screenName = screen->name();
-        } else {
-            screen = *screen_it;
-        }
+        if (screen_it != screens.end())
+            channel->setOutputWindowScreen(*screen_it);
 
         channel->setOptions(options);
-        addChannel(channel, channelStatus, screen);
+        addChannel(channel, channelStatus);
     }
 
     settings.endArray();
@@ -392,7 +387,7 @@ void Engine::receiveFrameNotification(const FramePtr& frame)
     }
 }
 
-void Engine::addChannel(Channel *channel, int status, QScreen *screen)
+void Engine::addChannel(Channel *channel, int status)
 {
     if (!channel)
         return;
@@ -498,7 +493,7 @@ void Engine::addChannel(Channel *channel, int status, QScreen *screen)
     emit channelAdded(channel->options());
 }
 
-void Engine::addDemoChannel(DemoChannel *channel, QScreen *screen)
+void Engine::addDemoChannel(DemoChannel *channel)
 {
     if (!channel)
         return;
@@ -592,7 +587,7 @@ void Engine::addDemoChannel(DemoChannel *channel, QScreen *screen)
                                             nullptr);
     window->setWindowTitle(channel->options().windowName);
     window->setGeometry(channel->options().windowGeometry);
-    window->setScreen(screen);
+    window->setScreen(channel->outputWindowScreen());
     model->setParent(window);
     m_outputWindows.emplace(channel->options().id, window);
     if (m_mainQmlWindow)

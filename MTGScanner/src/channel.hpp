@@ -3,6 +3,7 @@
 #include <QPair>
 #include <QObject>
 #include <QCamera>
+#include <QScreen>
 #include <QVideoSink>
 #include <QMediaPlayer>
 #include <QMediaCaptureSession>
@@ -22,6 +23,7 @@ protected:
     Q_PROPERTY(ChannelOptions options READ constOptions WRITE setOptions NOTIFY optionsChanged FINAL)
     Q_PROPERTY(ChannelMetrics* metrics READ metrics WRITE setMetrics NOTIFY metricsChanged FINAL)
     Q_PROPERTY(QVideoSink* outVideoSink READ outVideoSink WRITE setOutVideoSink NOTIFY outVideoSinkChanged FINAL)
+    Q_PROPERTY(QScreen* outputWindowScreen READ outputWindowScreen WRITE setOutputWindowScreen NOTIFY outputWindowScreenChanged FINAL)
 public:
     explicit AbstractChannel(const QString &channelType, QObject *parent = nullptr) : QObject(parent), m_channelType(channelType) {}
     virtual ~AbstractChannel() {}
@@ -30,6 +32,7 @@ public:
     const ChannelOptions &constOptions() const;
     ChannelMetrics *metrics() const;
     QVideoSink *outVideoSink() const;
+    QScreen *outputWindowScreen() const;
     virtual void start() = 0;
     virtual void stop() = 0;
 
@@ -37,17 +40,20 @@ public slots:
     void setOptions(const ChannelOptions &options);
     void setMetrics(ChannelMetrics *metrics);
     void setOutVideoSink(QVideoSink *outVideoSink);
+    void setOutputWindowScreen(QScreen *outputWindowScreen);
 
 signals:
     void optionsChanged();
     void metricsChanged();
     void outVideoSinkChanged();
+    void outputWindowScreenChanged();
 
 private:
     QString m_channelType;
     ChannelOptions m_options;
     ChannelMetrics *m_metrics = nullptr;
     QVideoSink *m_outVideoSink = nullptr;
+    QScreen *m_outputWindowScreen = nullptr;
 };
 
 inline QString AbstractChannel::channelType() const { return m_channelType; }
@@ -55,6 +61,7 @@ inline ChannelOptions &AbstractChannel::options() { return m_options; }
 inline const ChannelOptions &AbstractChannel::constOptions() const { return m_options; }
 inline ChannelMetrics *AbstractChannel::metrics() const { return m_metrics; }
 inline QVideoSink *AbstractChannel::outVideoSink() const { return m_outVideoSink; }
+inline QScreen *AbstractChannel::outputWindowScreen() const { return m_outputWindowScreen; }
 
 inline void AbstractChannel::setOptions(const ChannelOptions &options) {
     if (m_options == options) return;
@@ -72,6 +79,12 @@ inline void AbstractChannel::setOutVideoSink(QVideoSink *outVideoSink) {
     if (m_outVideoSink == outVideoSink) return;
     m_outVideoSink = outVideoSink;
     emit outVideoSinkChanged();
+}
+
+inline void AbstractChannel::setOutputWindowScreen(QScreen *outputWindowScreen) {
+    if (m_outputWindowScreen == outputWindowScreen) return;
+    m_outputWindowScreen = outputWindowScreen;
+    emit outputWindowScreenChanged();
 }
 
 // This lives on the Engine (main thread).

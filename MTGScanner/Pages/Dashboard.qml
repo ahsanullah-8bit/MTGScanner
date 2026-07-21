@@ -108,7 +108,7 @@ Page {
 
                 winName: channel ? channel.options.windowName : "Invalid Window Name"
                 geometry: channel ? channel.options.windowGeometry : [-1, -1, -1, -1]
-                screenName: channel ? channel.options.screenName : "Invalid Screen"
+                screenName: channel ? channel.outputWindowScreen.name : "Invalid Screen"
             }
         }
 

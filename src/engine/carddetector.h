@@ -28,7 +28,6 @@ struct CardDetectorConfig {
     std::optional<int> channels;
     std::optional<std::array<int, 2>> imgsz;
     std::optional<std::unordered_map<int, std::string>> names;
-    std::optional<float> confidence;
     std::optional<float> iouThreshold;
     std::optional<std::array<int, 2>> kptShape;
     std::optional<std::unordered_map<int, std::vector<int>>> kptNames;
@@ -38,7 +37,7 @@ struct CardDetectorConfig {
 class CardDetector {
 public:
     explicit CardDetector(QSharedPointer<Ort::Env> env, const CardDetectorConfig &config, Ort::SessionOptions sessionOptions, Ort::MemoryInfo memoryInfo);
-    QList<QList<Prediction>> predict(const QList<cv::Mat> &batch);
+    QList<QList<Prediction>> predict(const QList<cv::Mat> &batch, float threshold = 0.4f);
     void draw(cv::Mat &image, const QList<Prediction> &predictions, bool drawBBox = true, bool drawKeypoints = true, bool drawSkeletons = true, float maskAlpha = 0.3f);
     void printModelMetadata();
 
@@ -50,7 +49,7 @@ public:
 private:
     bool validateAndFillConfig(CardDetectorConfig &config);
     std::tuple<QList<cv::Mat>, cv::Size, std::vector<int64_t>> preProcess(const QList<cv::Mat> &batch, int batchIndx, int batchSize);
-    QList<QList<Prediction>> postProcess(const QList<cv::Mat> &batch, int batchIndx, int batchSize, cv::Size resizedSize, const std::vector<Ort::Value> &outputTensor);
+    QList<QList<Prediction>> postProcess(const QList<cv::Mat> &batch, int batchIndx, int batchSize, cv::Size resizedSize, const std::vector<Ort::Value> &outputTensor, float threshold = 0.4f);
 
 private:
     CardDetectorConfig m_config;

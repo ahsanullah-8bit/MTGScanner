@@ -255,7 +255,7 @@ CardDetector::CardDetector(QSharedPointer<Ort::Env> env, const CardDetectorConfi
     }
 }
 
-QList<QList<Prediction>> CardDetector::predict(const QList<cv::Mat> &batch)
+QList<QList<Prediction>> CardDetector::predict(const QList<cv::Mat> &batch, float threshold)
 {
     if (batch.empty())
         return {};
@@ -553,7 +553,7 @@ std::tuple<QList<cv::Mat>, cv::Size, std::vector<int64_t>> CardDetector::preProc
     return { res_batch, new_size, shape };
 }
 
-QList<QList<Prediction>> CardDetector::postProcess(const QList<cv::Mat> &batch, int batchIndx, int batchSize, cv::Size resizedSize, const std::vector<Ort::Value> &outputTensors)
+QList<QList<Prediction>> CardDetector::postProcess(const QList<cv::Mat> &batch, int batchIndx, int batchSize, cv::Size resizedSize, const std::vector<Ort::Value> &outputTensors, float threshold)
 {
     const auto &tensor = outputTensors.at(0);
     const auto &shape0 = tensor.GetTensorTypeAndShapeInfo().GetShape();
@@ -616,7 +616,7 @@ QList<QList<Prediction>> CardDetector::postProcess(const QList<cv::Mat> &batch, 
             if (tit_score > max_score) { max_score = tit_score; class_id = 1; }
             if (cb_score > max_score) { max_score = cb_score; class_id = 2; }
 
-            if (max_score < m_config.confidence.value_or(0.4f))
+            if (max_score < threshold)
                 continue;
 
             const float cx = batch_offsetptr[0 * out_num_detections + col];
@@ -647,7 +647,7 @@ QList<QList<Prediction>> CardDetector::postProcess(const QList<cv::Mat> &batch, 
         }
 
         // Apply Non-Maximum Suppression (NMS) to eliminate redundant detections
-        const QList<int> indices = nmsBBoxes(nms_boxes, scores, m_config.confidence.value_or(0.4f), m_config.iouThreshold.value_or(0.4f));
+        const QList<int> indices = nmsBBoxes(nms_boxes, scores, threshold, m_config.iouThreshold.value_or(0.4f));
 
         const cv::Size orig_size(batch[batchIndx + b].cols, batch[batchIndx + b].rows);
         const float gain = std::min(static_cast<float>(resizedSize.height) / orig_size.height, static_cast<float>(resizedSize.width) / orig_size.width);

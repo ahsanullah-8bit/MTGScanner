@@ -132,8 +132,16 @@ void Engine::initializeGraph()
             return;
         }
 
+        float threshold = 0.4f;
+        {
+            accessor a;
+            if (m_rawChannels.find(a, frame->channelId)
+                && !a.empty()) {
+                threshold = a->second->options.detectionThreshold;
+            }
+        }
         // TODO: Process the image. For now, we just pass it through.
-        frame->predictions = m_cardDetector->predict({frame->mat}).at(0);
+        frame->predictions = m_cardDetector->predict({frame->mat}, threshold).at(0);
 
         std::get<0>(ports).try_put(frame);
         std::get<1>(ports).try_put(tf::continue_msg());

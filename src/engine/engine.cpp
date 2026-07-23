@@ -296,7 +296,6 @@ void Engine::saveToSettings()
         settings.setValue("name", options.name);
         settings.setValue("maxInFlight", options.maxInFlight);
         settings.setValue("detThresh", options.detectionThreshold);
-        settings.setValue("filters", QVariant::fromValue(options.filters));
         settings.setValue("cameraDeviceId", options.cameraDevice.id());
         settings.setValue("cameraDeviceDesc", options.cameraDevice.description());
         settings.setValue("winName", options.windowName);
@@ -323,7 +322,6 @@ void Engine::loadFromSettings()
         options.name = settings.value("name").toString();
         options.maxInFlight = settings.value("maxInFlight").toInt();
         options.detectionThreshold = settings.value("detThresh").toFloat();
-        options.filters = settings.value("filters").toStringList();
         options.windowName = settings.value("winName").toString();
         options.windowGeometry = settings.value("winGeometry").toRect();
         int channelStatus = settings.value("status").toInt();

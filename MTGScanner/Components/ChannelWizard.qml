@@ -118,50 +118,6 @@ Dialog {
                             channel.options.windowName = text + " Output"
                         }
                     }
-                    Label {
-                        Layout.alignment: Qt.AlignLeft | Qt.AlignTop
-
-                        text: "Active Filters"
-                        font.pixelSize: 12
-                        color: Material.foreground
-                    }
-                    Flow {
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignLeft | Qt.AlignTop
-                        spacing: 8
-
-                        Repeater {
-                            model: ["Rare+", "Foil Only", "Mythic", "Creature"]
-                            delegate: Button {
-                                text: modelData
-                                checkable: true
-                                checked: channel && channel.options.filters.indexOf(modelData) >= 0
-                                flat: true
-                                // Toggle filter in the array
-                                onClicked: {
-                                    let filters = control.channel.options.filters
-                                    if (checked) {
-                                        if (filters.indexOf(modelData) === -1)
-                                            filters.push(modelData);
-                                    } else {
-                                        var idx = filters.indexOf(modelData);
-                                        if (idx >= 0) filters.splice(idx, 1);
-                                    }
-                                    control.channel.options.filters = filters;
-                                }
-                                Material.foreground: checked ? Material.accent : Material.hintTextColor
-                                Material.background: "transparent"
-                                Component.onCompleted: {
-                                    // TODO: initialize activeFilters (Rare+ and Foil Only default checked)
-                                    if (modelData === "Rare+" || modelData === "Foil Only") {
-                                        checked = true;
-                                        if (channel !== null)
-                                            channel.options.filters.push(modelData);
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     RowLayout {
                         Layout.fillWidth: true

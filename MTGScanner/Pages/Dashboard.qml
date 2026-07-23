@@ -95,13 +95,6 @@ Page {
                 description: channel ? channel.options.cameraDevice.description : "Dummy Description"
             }
 
-            ActiveFiltersCard {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-
-                filters: ["Rare+", "Foil Only"]
-            }
-
             OutputWindowCard {
                 Layout.fillWidth: true
                 Layout.fillHeight: true

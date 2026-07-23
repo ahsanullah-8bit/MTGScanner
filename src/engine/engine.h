@@ -58,8 +58,7 @@ public slots:
     void saveToSettings();
     void loadFromSettings();
     void receiveFrameNotification(const MTGS::FramePtr& frame);
-    void addChannel(Channel *channel, int status = ChannelStatus::Unknown);
-    void addDemoChannel(DemoChannel *channel);
+    void addChannel(AbstractChannel *channel, int status = ChannelStatus::Unknown);
     void deleteChannel(const MTGS::ChannelOptions &options);
     void startChannel(const QString &channelId);
     void stopChannel(const QString &channelId);

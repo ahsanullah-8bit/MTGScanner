@@ -92,7 +92,7 @@ Engine::Engine(QObject *parent)
         channel->setMetrics(new ChannelMetrics(channel));
         channel->setOutputWindowScreen(QGuiApplication::primaryScreen());
 
-        addDemoChannel(channel);
+        addChannel(channel, Engine::Running);
     }
 #endif
 
@@ -385,20 +385,24 @@ void Engine::receiveFrameNotification(const FramePtr& frame)
     }
 }
 
-void Engine::addChannel(Channel *channel, int status)
+void Engine::addChannel(AbstractChannel *channel, int status)
 {
     if (!channel)
         return;
 
-    // Mark the camera first. This function expects the QCamera
-    // to have already been activated before.
-    m_cameraMngr->setCameraInUse(channel->options().cameraDevice, true);
+    Channel *live_channel = qobject_cast<Channel*>(channel);
+    DemoChannel *demo_channel = qobject_cast<DemoChannel*>(channel);
+    if (live_channel) {
+        // Mark the camera first. This function expects the QCamera
+        // to have already been activated before.
+        m_cameraMngr->setCameraInUse(channel->options().cameraDevice, true);
 
-    channel->camera()->stop();
-    channel->captureSession()->setVideoOutput(nullptr);
-    channel->captureSession()->setVideoSink(new QVideoSink(channel->captureSession()));
+        live_channel->camera()->stop();
+        live_channel->captureSession()->setVideoOutput(nullptr);
+        live_channel->captureSession()->setVideoSink(new QVideoSink(live_channel->captureSession()));
+    }
 
-    QSharedPointer<ChannelRaw> channel_raw(new ChannelRaw);
+    auto channel_raw = QSharedPointer<ChannelRaw>::create();
 
     // Bind metrics
     channel->metrics()->setFps(&channel_raw->fps);
@@ -425,48 +429,85 @@ void Engine::addChannel(Channel *channel, int status)
     capture->setGateway(&channel_raw->asyncSrc->gateway());
     connect(thread, &QThread::finished, capture, &QObject::deleteLater);
     connect(thread, &QThread::finished, thread, &QObject::deleteLater);
-    connect(channel->captureSession()->videoSink(), &QVideoSink::videoFrameChanged, capture, &CameraCapture::onVideoFrameChanged);
-    connect(channel->camera(), &QCamera::errorOccurred,
-        [this, channel = channel, capture = capture] (QCamera::Error error, const QString &errorStr) {
-            accessor a;
-            if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
-                auto &raw_channel = a->second;
-                raw_channel->status.storeRelaxed(Engine::Errored);
-            }
 
-            QMetaObject::invokeMethod(capture,
-                "onErrorOccurred",
-                Q_ARG(QString, channel->options().name),
-                Q_ARG(QCamera::Error, error),
-                Q_ARG(QString, errorStr));
-        }
-    );
-    connect(channel->camera(), &QCamera::activeChanged,
-        [this, channel = channel, capture = capture] (bool active) {
-            accessor a;
-            if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
-                auto &raw_channel = a->second;
-                if (raw_channel->status.loadRelaxed() == Engine::Errored) {
-                    // This is an error scenario, not a common start/stop one.
-                    // We let that be.
-                    return;
+    if (live_channel) {
+        connect(live_channel->captureSession()->videoSink(), &QVideoSink::videoFrameChanged, capture, &CameraCapture::onVideoFrameChanged);
+        connect(live_channel->camera(), &QCamera::errorOccurred,
+            [this, channel = live_channel, capture = capture] (QCamera::Error error, const QString &errorStr) {
+                accessor a;
+                if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
+                    auto &raw_channel = a->second;
+                    raw_channel->status.storeRelaxed(Engine::Errored);
                 }
     
-                if (active)
-                    raw_channel->status.storeRelease(Engine::Running);
-                else
-                    raw_channel->status.storeRelease(Engine::Stopped);
+                QMetaObject::invokeMethod(capture,
+                    "onErrorOccurred",
+                    Q_ARG(QString, channel->options().name),
+                    Q_ARG(QCamera::Error, error),
+                    Q_ARG(QString, errorStr));
             }
+        );
+        connect(live_channel->camera(), &QCamera::activeChanged,
+            [this, channel = live_channel, capture = capture] (bool active) {
+                accessor a;
+                if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
+                    auto &raw_channel = a->second;
+                    if (raw_channel->status.loadRelaxed() == Engine::Errored) {
+                        // This is an error scenario, not a common start/stop one.
+                        // We let that be.
+                        return;
+                    }
+        
+                    raw_channel->status.storeRelease(active ? Engine::Running : Engine::Stopped);
+                }
+    
+                QMetaObject::invokeMethod(capture,
+                    "onActiveChanged",
+                    Q_ARG(QString, channel->options().name),
+                    Q_ARG(bool, active));
+            }
+        );
+    } else if (demo_channel) {
+        connect(demo_channel->player()->videoSink(), &QVideoSink::videoFrameChanged, capture, &CameraCapture::onVideoFrameChanged);
+        connect(demo_channel->player(), &QMediaPlayer::errorOccurred,
+            [this, channel = demo_channel, capture = capture] (QMediaPlayer::Error error, const QString &errorStr) {
+                accessor a;
+                if (m_rawChannels.find(a, channel->options().id) && !a.empty())
+                    a->second->status.storeRelaxed(Engine::Errored);
 
-            QMetaObject::invokeMethod(capture,
-                "onActiveChanged",
-                Q_ARG(QString, channel->options().name),
-                Q_ARG(bool, active));
-        }
-    );
+                QMetaObject::invokeMethod(capture,
+                    "onPlayerErrorOccurred",
+                    Q_ARG(QString, channel->options().name),
+                    Q_ARG(QMediaPlayer::Error, error),
+                    Q_ARG(QString, errorStr));
+            }
+        );
+        connect(demo_channel->player(), &QMediaPlayer::playbackStateChanged,
+            [this, channel = demo_channel, capture = capture] (QMediaPlayer::PlaybackState status) {
+                accessor a;
+                if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
+                    auto &raw = a->second;
+                    if (raw->status.loadRelaxed() == Engine::Errored) {
+                        // This is an error scenario, not a common start/stop one.
+                        // We let that be.
+                        return;
+                    }
 
+                    bool active = status == QMediaPlayer::PlayingState;
+                    raw->status.storeRelease(active ? Engine::Running : Engine::Stopped);
+                }
+
+                QMetaObject::invokeMethod(capture,
+                    "onActiveChanged",
+                    Q_ARG(QString, channel->options().name),
+                    Q_ARG(bool, status == QMediaPlayer::PlayingState));
+            }
+        );
+    }
+    
     capture->moveToThread(thread);
     channel_raw->capture = {thread, capture};
+    channel_raw->cardProcessor = QSharedPointer<CardProcessor>::create(30, 60);
     channel_raw->options = channel->options();
     channel_raw->status.storeRelaxed(status);
     channel_raw->capture.thread->start();
@@ -475,123 +516,34 @@ void Engine::addChannel(Channel *channel, int status)
 
     if (!m_rawChannels.emplace(channel->options().id, channel_raw)) {
         qCCritical(engine_logger) << "Failed to insert a new channel after connecting it, named" << channel->options().name;
-        
         disconnectChannel(channel, channel_raw);
         channel->deleteLater();
         return;
     }
 
-    if (channel->metrics()->status() != Engine::Stopped) {
+    if (demo_channel) {
+        auto model = new NameplateModel(20);
+        OutputWindow *window = new OutputWindow(true,
+                                                true,
+                                                model,
+                                                nullptr);
+        window->setWindowTitle(channel->options().windowName);
+        window->setGeometry(channel->options().windowGeometry);
+        window->setScreen(channel->outputWindowScreen());
+        model->setParent(window);
+        m_outputWindows.emplace(channel->options().id, window);
+        if (m_mainQmlWindow)
+            window->open(m_mainQmlWindow);
+    }
+
+    if (live_channel && channel->metrics()->status() != Engine::Stopped) {
         // Then it's probably Unknown
-        channel->camera()->start();
+        live_channel->camera()->start();
     }
 
-    m_channels.emplace(channel->options().id, channel);
-    m_channelIdIndexMap.append(channel->options().id);
-    emit channelAdded(channel->options());
-}
+    if (demo_channel)
+        demo_channel->player()->play();
 
-void Engine::addDemoChannel(DemoChannel *channel)
-{
-    if (!channel)
-        return;
-
-    QSharedPointer<ChannelRaw> channel_raw(new ChannelRaw);
-    channel->metrics()->setFps(&channel_raw->fps);
-    channel->metrics()->setCaptureFps(&channel_raw->captureFps);
-    channel->metrics()->setSkippedFps(&channel_raw->skippedFps);
-    channel->metrics()->setStatus(&channel_raw->status);
-    channel->metrics()->setVisibleCards(&channel_raw->visibleCards);
-    connect(m_metricsTimer, &QTimer::timeout, channel->metrics(), &ChannelMetrics::fireMetricsUpdate);
-
-    // Per-channel nodes and edges
-    auto async_src_body = [] (const tf::continue_msg &, tf::async_node<tf::continue_msg, FramePtr>::gateway_type& gateway) {};
-    auto sequencer_body = [] (const FramePtr &f) { return f->sequenceId; };
-    channel_raw->asyncSrc = QSharedPointer<tf::async_node<tf::continue_msg, FramePtr>>::create(m_graph, tf::unlimited, async_src_body);
-    channel_raw->preLimiter = QSharedPointer<tf::limiter_node<FramePtr>>::create(m_graph, channel->options().maxInFlight);
-    channel_raw->postSequencer = QSharedPointer<tf::sequencer_node<FramePtr>>::create(m_graph, sequencer_body);
-
-    tf::make_edge(*channel_raw->asyncSrc, *channel_raw->preLimiter);
-    tf::make_edge(*channel_raw->preLimiter, *m_processor);
-    tf::make_edge(*channel_raw->postSequencer, *m_uiNotifier);
-
-    // Camera Capture setup
-    auto *thread = new QThread();
-    auto *capture = new CameraCapture(channel->options().id, channel->options().cameraDevice.id(), channel_raw->captureFps, channel_raw->skippedFps);
-    capture->setGateway(&channel_raw->asyncSrc->gateway());
-    connect(thread, &QThread::finished, capture, &QObject::deleteLater);
-    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
-    connect(channel->player()->videoSink(), &QVideoSink::videoFrameChanged, capture, &CameraCapture::onVideoFrameChanged);
-    connect(channel->player(), &QMediaPlayer::errorOccurred,
-        [this, channel = channel, capture = capture] (QMediaPlayer::Error error, const QString &errorStr) {
-            accessor a;
-            if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
-                auto &raw_channel = a->second;
-                raw_channel->status.storeRelaxed(Engine::Errored);
-            }
-
-            QMetaObject::invokeMethod(capture,
-                "onPlayerErrorOccurred",
-                Q_ARG(QString, channel->options().name),
-                Q_ARG(QMediaPlayer::Error, error),
-                Q_ARG(QString, errorStr));
-        }
-    );
-    connect(channel->player(), &QMediaPlayer::playbackStateChanged,
-        [this, channel = channel, capture = capture] (QMediaPlayer::PlaybackState status) {
-            accessor a;
-            if (m_rawChannels.find(a, channel->options().id) && !a.empty()) {
-                auto &raw_channel = a->second;
-                if (raw_channel->status.loadRelaxed() == Engine::Errored) {
-                    // This is an error scenario, not a common start/stop one.
-                    // We let that be.
-                    return;
-                }
-
-                if (status == QMediaPlayer::PlayingState)
-                    raw_channel->status.storeRelease(Engine::Running);
-                else
-                    raw_channel->status.storeRelease(Engine::Stopped);
-            }
-
-            QMetaObject::invokeMethod(capture,
-                "onActiveChanged",
-                Q_ARG(QString, channel->options().name),
-                Q_ARG(bool, status == QMediaPlayer::PlayingState));
-        }
-    );
-
-    capture->moveToThread(thread);
-    channel_raw->capture = {thread, capture};
-    channel_raw->cardProcessor = QSharedPointer<CardProcessor>::create(30, 60);
-    channel_raw->options = channel->options();
-    channel_raw->status.storeRelaxed(Engine::Running);
-    channel_raw->capture.thread->start();
-    channel_raw->skippedFps.start();
-    channel_raw->fps.start();
-
-    if (!m_rawChannels.emplace(channel->options().id, channel_raw)) {
-        qCCritical(engine_logger) << "Failed to insert a new channel after connecting it, named" << channel->options().name;
-
-        disconnectChannel(channel, channel_raw);
-        channel->deleteLater();
-        return;
-    }
-
-    auto model = new NameplateModel(20);
-    OutputWindow *window = new OutputWindow(true,
-                                            true,
-                                            model,
-                                            nullptr);
-    window->setWindowTitle(channel->options().windowName);
-    window->setGeometry(channel->options().windowGeometry);
-    window->setScreen(channel->outputWindowScreen());
-    model->setParent(window);
-    m_outputWindows.emplace(channel->options().id, window);
-    if (m_mainQmlWindow)
-        window->open(m_mainQmlWindow);
-
-    channel->player()->play();
     m_channels.emplace(channel->options().id, channel);
     m_channelIdIndexMap.append(channel->options().id);
     emit channelAdded(channel->options());
